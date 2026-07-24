@@ -1,0 +1,227 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  BUSINESS
+  CREATOR
+}
+
+enum AnalysisSubject {
+  BUSINESS
+  PRODUCT
+  CREATOR
+}
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String
+  role         UserRole
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  business     Business?
+  creator      Creator?
+}
+
+model Business {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  name      String
+  website   String
+  logoUrl   String?
+  country   String?
+  language  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user       User              @relation(fields: [userId], references: [id])
+  profile    BusinessProfile?
+  products   Product[]
+  campaigns  Campaign[]
+  matches    Match[]
+  shortlists Shortlist[]
+}
+
+model BusinessProfile {
+  id                           String   @id @default(uuid())
+  businessId                   String   @unique
+  description                  String
+  industry                     String
+  category                     String
+  products                     Json
+  services                     Json
+  targetAudience               Json
+  brandTone                    Json
+  pricePositioning             String
+  socialLinks                  Json
+  visualStyle                  Json
+  keywords                     Json
+  primaryValueProposition      String
+  uniqueSellingPoints          Json
+  brandPersonality             Json
+  estimatedCustomerPersona     Json
+  importantPages               Json
+  contactInformation           Json
+  frequentlyMentionedTerms     Json
+  summary                      String
+  embeddingText                String
+  rawData                      Json
+  createdAt                    DateTime @default(now())
+  updatedAt                    DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id])
+}
+
+model Product {
+  id          String   @id @default(uuid())
+  businessId  String
+  name        String
+  description String
+  imageUrls   Json
+  landingPage String?
+  price       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  business  Business    @relation(fields: [businessId], references: [id])
+  campaigns Campaign[]
+  analyses  AIAnalysis[]
+}
+
+model Campaign {
+  id                   String   @id @default(uuid())
+  businessId           String
+  productId            String?
+  name                 String
+  goal                 String
+  targetAudience       String
+  preferredCreatorType String
+  budget               Int
+  startsAt             DateTime?
+  endsAt               DateTime?
+  notes                String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id])
+  product  Product? @relation(fields: [productId], references: [id])
+  matches  Match[]
+}
+
+model Creator {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  name      String
+  handle    String   @unique
+  website   String?
+  country   String?
+  language  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user       User             @relation(fields: [userId], references: [id])
+  profile    CreatorProfile?
+  pricing    CreatorPricing?
+  matches    Match[]
+  shortlists Shortlist[]
+}
+
+model CreatorPricing {
+  id           String   @id @default(uuid())
+  creatorId    String   @unique
+  story        Int?
+  reel         Int?
+  staticPost   Int?
+  carousel     Int?
+  ugcVideo     Int?
+  packagePrice Int?
+  currency     String   @default("USD")
+  updatedAt    DateTime @updatedAt
+
+  creator Creator @relation(fields: [creatorId], references: [id])
+}
+
+model CreatorProfile {
+  id                         String   @id @default(uuid())
+  creatorId                  String   @unique
+  bio                        String
+  profileImage               String?
+  publicFollowerCount        Int?
+  publicFollowingCount       Int?
+  publicPostCount            Int?
+  primaryNiche               String
+  secondaryNiches            Json
+  topicsDiscussed            Json
+  contentPillars             Json
+  contentStyles              Json
+  brandPersonality           Json
+  estimatedAudience          Json
+  contentQuality             Json
+  postingBehaviour           Json
+  brandSafety                Json
+  previousCollaborations     Json
+  summary                    String
+  embeddingText              String
+  rawData                    Json
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
+
+  creator Creator @relation(fields: [creatorId], references: [id])
+}
+
+model AIAnalysis {
+  id            String          @id @default(uuid())
+  subject       AnalysisSubject
+  subjectId     String
+  productId     String?
+  rawData       Json
+  structured    Json
+  summary       String
+  embeddingText String
+  model         String
+  confidence    Float
+  createdAt     DateTime        @default(now())
+
+  product Product? @relation(fields: [productId], references: [id])
+}
+
+model Match {
+  id                     String   @id @default(uuid())
+  businessId             String
+  campaignId             String?
+  creatorId              String
+  score                  Int
+  confidenceLevel        String
+  reasons                Json
+  riskFactors            Json
+  suggestedCollaboration String
+  estimatedRoiConfidence String
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  business Business  @relation(fields: [businessId], references: [id])
+  campaign Campaign? @relation(fields: [campaignId], references: [id])
+  creator  Creator   @relation(fields: [creatorId], references: [id])
+
+  @@unique([businessId, campaignId, creatorId])
+  @@index([score])
+}
+
+model Shortlist {
+  id         String   @id @default(uuid())
+  businessId String
+  creatorId  String
+  notes      String?
+  createdAt  DateTime @default(now())
+
+  business Business @relation(fields: [businessId], references: [id])
+  creator  Creator  @relation(fields: [creatorId], references: [id])
+
+  @@unique([businessId, creatorId])
+}

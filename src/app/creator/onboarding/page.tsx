@@ -1,0 +1,1 @@
+﻿import ProductShell from "@/components/ProductShell"; export default function Page() { return <ProductShell role="creator" creatorStep="onboarding" />; }
