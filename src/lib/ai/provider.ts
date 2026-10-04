@@ -390,11 +390,30 @@ function extractCreatorHandle(scrape: ScrapeResult) {
 
 function extractCreatorName(scrape: ScrapeResult, handle: string) {
   const title = cleanText(scrape.title || "");
+  // Instagram often reports the handle itself as the display name, so every
+  // path runs through the same tidy-up.
   const titleMatch = title.match(/^(.+?)\s*\(@/);
-  if (titleMatch?.[1]) return titleMatch[1];
+  if (titleMatch?.[1]) return prettifyHandleName(titleMatch[1]);
   const nameMatch = scrape.textSample.match(/Name:\s*([^\.]+)/i);
-  if (nameMatch?.[1]) return cleanText(nameMatch[1]);
-  return title && !title.startsWith("@") ? title : handle.replace("@", "").replace(/[._-]/g, " ");
+  if (nameMatch?.[1]) return prettifyHandleName(cleanText(nameMatch[1]));
+  // When Instagram withholds the profile, the only thing left is the handle
+  // itself, so present it as a name rather than echoing the raw slug.
+  const fallback = title && !title.startsWith("@") ? title : handle;
+  return prettifyHandleName(fallback);
+}
+
+/** "rukmini_vasanth" -> "Rukmini Vasanth". Leaves real display names alone. */
+export function prettifyHandleName(value: string) {
+  const cleaned = value.replace(/^@/, "").trim();
+  if (!cleaned) return value;
+  const looksLikeSlug = !cleaned.includes(" ") && (/[._-]/.test(cleaned) || cleaned === cleaned.toLowerCase());
+  if (!looksLikeSlug) return cleaned;
+  return cleaned
+    .replace(/[._-]+/g, " ")
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
 }
 
 function extractCreatorBio(scrape: ScrapeResult) {
