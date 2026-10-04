@@ -1,16 +1,22 @@
 # SociaFlux — AI Creator Matchmaking Platform
 
-SociaFlux is an AI-powered creator-brand matchmaking platform for onboarding brands, building product personas, analyzing creators, launching campaigns, and comparing creator fit.
+SociaFlux is an AI-powered creator-brand matchmaking platform for onboarding brands, building product personas, analyzing creators, posting campaigns, and running a two-sided application marketplace between brands and creators.
 
 ## Highlights
 
 - Separate brand/business and creator workspaces
+- Handle-based creator sign-in, so several creator profiles can coexist in one demo
 - Brand onboarding with AI-assisted persona questions
-- Product persona builder and campaign launch flow
-- Creator onboarding with Instagram-style analytics and AI persona setup
-- Matched campaign feed with compatibility scores and sorting
-- Creator pricing setup with barter collaboration option
-- Brand-side creator comparison table and match justification UI
+- Product persona builder, plus campaign posting with niche targeting, minimum audience size and deliverables
+- Creator onboarding with a structured niche taxonomy (primary niche, sub-niches, content languages)
+- Creator portfolio: add published reels and posts with stats, previewed inline
+- Job-board style campaign feed — creators browse, filter, and apply with a pitch and a quote
+- Weighted tag/region/barter matching engine shared by both sides of the marketplace
+- Region targeting on campaigns (country, state, city) as either a preference or a hard filter
+- Barter policy per campaign (paid, paid-or-barter, barter-only) matched against each creator's barter flag
+- Brand applicant review — filter by niche, audience size, quote and barter; shortlist or approve
+- Contact details (email, phone, manager) stay private until the brand approves an application
+- Compatibility scoring, creator comparison table, and AI match justification UI
 - Dark, premium UI system built with Tailwind CSS
 
 ## Tech Stack
@@ -19,18 +25,187 @@ SociaFlux is an AI-powered creator-brand matchmaking platform for onboarding bra
 - React 19
 - TypeScript
 - Tailwind CSS
-- Prisma
+- Turso (libSQL) via `@libsql/client`
 - OpenAI-ready API structure
 
 ## Local Development
 
 ```bash
 npm install
-npm run build
+cp .env.example .env.local   # then fill in the SOCIAFLUX_TURSO_* values
+npm run db:migrate
+npm run db:seed
 npm run dev
 ```
 
 Open `http://localhost:3000`.
+
+`SOCIAFLUX_AI_PROVIDER="mock"` uses the built-in heuristic analysis engine; set
+`SOCIAFLUX_OPENAI_API_KEY` and `SOCIAFLUX_AI_PROVIDER="openai"` to use real model
+calls. Without Turso credentials the app falls back to a local SQLite file, so it
+still runs.
+
+All variables are prefixed with `SOCIAFLUX_` so they do not collide with other
+projects sharing Vercel team-level environment variables.
+
+### Walking the marketplace flow
+
+Campaigns, applications and creator profiles are stored in the database, so the
+two workspaces share one marketplace across browsers and devices.
+
+1. **Brand → Post campaign.** Fill in the brief, pick target niches, a minimum audience size and deliverables, then post it. The campaign goes live on the creator board.
+2. **Creator → sign in** at `/creator/login` with a handle (for example `@mayaskinnotes`), pick niches during onboarding, and add published work under **My portfolio**.
+3. **Creator → Campaigns.** Filter the board by niche or eligibility, open a campaign, and apply with a pitch and a quote.
+4. **Brand → Applicants.** Filter applicants by niche, audience size, quote or barter, review their reels inline, shortlist, and approve. Approving unlocks that creator's email and phone number.
+
+Sign in under a different handle to add a second applicant to the same campaign.
+
+## Database
+
+Campaigns, applications, creator profiles and brands live in **Turso** (libSQL),
+so a brand and a creator in different browsers see the same marketplace.
+
+Storage is hybrid: the fields the app filters, sorts and joins on are real
+columns, while the full domain object is kept as JSON in a `data`/`profile`
+column. That keeps the nested shapes the app already uses — campaign targets,
+brief assets, creator analytics — without flattening them into dozens of columns.
+
+```bash
+npm run db:migrate   # applies src/lib/db/schema.sql (safe to re-run)
+npm run db:seed      # demo brand, creators, campaign and applications
+```
+
+Both read `SOCIAFLUX_TURSO_DATABASE_URL` and `SOCIAFLUX_TURSO_AUTH_TOKEN` from
+`.env.local`. With neither set, the app falls back to a local SQLite file at `.data/sociaflux.db`,
+so it still runs without credentials.
+
+| Table | Holds |
+| --- | --- |
+| `brands` | business profile JSON, keyed by a slug of the brand name |
+| `creators` | handle, niches, location, barter flag, follower count as columns; full `CreatorProfile` as JSON |
+| `campaigns` | objective, budget, barter policy, region rule as columns; full `Campaign` as JSON |
+| `applications` | one row per (campaign, creator), enforced by a unique constraint |
+
+What is still per-browser in `localStorage`: the signed-in creator handle, draft
+onboarding answers, and UI preferences like sort order and filters.
+
+### API
+
+| Route | Purpose |
+| --- | --- |
+| `GET/POST /api/creators` | list the directory, upsert a profile |
+| `GET /api/creators/search` | filter by niche, tag, language, country/state/city, price, barter |
+| `GET/POST /api/campaigns` | list campaigns, post one |
+| `GET/POST /api/applications` | list (by campaign or creator), apply |
+| `PATCH/DELETE /api/applications/:id` | brand decision, creator withdrawal |
+| `POST /api/match/campaign` | rank creators against a campaign |
+
+Writes from the UI are optimistic: local state updates immediately and the
+server's version replaces it when it lands. Creator edits are debounced so
+typing through onboarding does not write on every keystroke.
+
+## Campaign briefs and planning
+
+A campaign carries everything a creator needs to make the ad, and everything a
+brand needs to judge whether it worked:
+
+- **Reference material** — images, sample videos, brief documents and links, each
+  with a note on what creators should take from it. Shown on the campaign before
+  a creator applies.
+- **Content direction** — how the content should go, who should apply, must-include
+  and must-avoid lists, hashtags, mentions, usage rights and a submission deadline.
+- **Objective** — `awareness`, `engagement`, `traffic`, `conversions` or `ugc`.
+  This changes how click-through and conversion are projected.
+- **Targets** — reach, impressions, engagement rate, clicks, conversions, max CPM
+  and max cost per conversion. Any target may be left blank to skip tracking it.
+
+`src/lib/campaign-metrics.ts` turns a roster of creators into projected reach,
+impressions, engagements, clicks, conversions, spend and CPM, and compares that
+against the targets. Reach rate and engagement rate fall as follower count rises,
+and repeat deliverables add impressions faster than they add new people.
+
+These are planning heuristics derived from follower counts, not measured
+results — the rates are named constants at the top of the module, ready to be
+replaced with real platform data.
+
+## Applicant screening
+
+The brand's Applicants page screens like a hiring pipeline:
+
+- every applicant is scored by the matching engine, with a breakdown of tag,
+  region and barter fit,
+- ranked best-match first, or by projected reach, CPM, quote, followers or recency,
+- filtered by niche, audience size, quote, country, barter and "qualified only",
+- applicants who fail the campaign's hard rules are flagged with the reason rather
+  than hidden,
+- **Auto-shortlist best value** shortlists qualified applicants by lowest cost per
+  person reached, stopping at the reach target or budget. It never approves anyone.
+
+The **Campaign plan** panel on the same page projects what the shortlisted and
+approved roster will deliver, against the campaign's targets and budget.
+
+## Business classification
+
+`src/lib/ai/taxonomy.ts` classifies a scraped site into one of 15 categories. It
+scores every category rather than taking the first keyword hit, weights the page
+by section (title > description > headings > body > links), matches terms on word
+boundaries, and discounts a category supported by only one distinct term.
+
+That combination is what stops a consumer brand being classified by its footer:
+an "Investor Relations" link no longer makes a phone maker a venture studio, and
+"AI" no longer matches inside "available".
+
+## Matching engine
+
+`src/lib/campaign-matching.ts` scores every creator against a campaign on three
+weighted criteria, and reports hard eligibility separately so a brand can rank
+everyone while still seeing who its own rules exclude.
+
+| Criterion | Weight | How it scores |
+| --- | --- | --- |
+| Tag match | 0.5 | Share of the campaign's tags (`targetNiches` + `tags`) covered by the creator's niches and content tags, plus 0.15 when a tag hits their primary niche. Untagged campaigns fall back to keyword affinity against the brief. |
+| Region match | 0.3 | 1.0 when the creator satisfies a target at the specificity the campaign asked for (country, state or city); 0.5 for the right country but wrong state/city; 0.5 for an unstated location; 0 otherwise. No targets means open worldwide. |
+| Barter compatibility | 0.2 | `paid` ignores barter (1.0 for everyone); `flexible` gives 1.0 to barter-friendly creators and 0.5 to the rest; `barter_only` gives 1.0 or 0. |
+
+Tag matching is tolerant of phrasing: a campaign tag counts when it equals,
+contains, or is contained by one of the creator's tags, so `Skincare` matches a
+creator tagged `Skincare education`.
+
+Hard filters set `eligible: false` with a reason, and are the only rules that
+exclude rather than rank:
+
+- the creator is below the campaign's `minFollowers` floor,
+- the campaign is `barter_only` and the creator is not open to barter,
+- `regionRequirement` is `"required"` and the creator is outside the targets, or has no stated location.
+
+`POST /api/match/campaign` exposes the engine. Pass a `campaign` (and optionally
+`creators`, `requireRegionMatch`, `eligibleOnly`) and it returns ranked matches
+with a per-criterion breakdown:
+
+```bash
+curl -X POST http://localhost:3000/api/match/campaign \
+  -H "content-type: application/json" \
+  -d '{"campaign":{"name":"Barter push","targetNiches":["Skincare"],"barterPolicy":"barter_only","budget":0}}'
+```
+
+`GET /api/creators/search` filters the directory on `niche`, `tag` (repeatable),
+`language`, `country`, `state`, `city`, `maxPrice` and `openForBarter`.
+
+Country codes are ISO 3166-1 alpha-2. Inputs are canonicalised on the way in, so
+`IN`, `in` and `India` are equivalent, as are common aliases like `UK` for `GB`.
+
+## Tests
+
+```bash
+npm test
+```
+
+Runs `tests/*.test.ts` on the Node test runner via `tsx` — 165 cases covering tag
+intersection, barter policy, region specificity, the hard filters, score
+weighting and ranking order, the reach/conversion projection model, and the
+business classifier including the Samsung and Apple regressions, and the
+database repositories. The database tests run against a throwaway local SQLite
+file, never against Turso.
 
 ## Deployment
 
@@ -40,6 +215,9 @@ This project is ready to deploy on Vercel as a Next.js app.
 2. Import the GitHub repo into Vercel.
 3. Set any production environment variables from `.env.example`.
 4. Deploy.
+
+Set `SOCIAFLUX_TURSO_DATABASE_URL` and `SOCIAFLUX_TURSO_AUTH_TOKEN` in the Vercel
+project so the deployed instance talks to the same database.
 
 ## Environment Variables
 

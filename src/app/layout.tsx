@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
-const productName = process.env.NEXT_PUBLIC_PRODUCT_NAME || "CreatorMatch AI";
+const productName = process.env.NEXT_PUBLIC_SOCIAFLUX_PRODUCT_NAME || "SociaFlux";
 
 export const metadata: Metadata = {
   title: productName,

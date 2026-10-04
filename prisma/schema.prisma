@@ -40,7 +40,7 @@ model Business {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user       User              @relation(fields: [userId], references: [id])
+  user       User             @relation(fields: [userId], references: [id])
   profile    BusinessProfile?
   products   Product[]
   campaigns  Campaign[]
@@ -49,31 +49,31 @@ model Business {
 }
 
 model BusinessProfile {
-  id                           String   @id @default(uuid())
-  businessId                   String   @unique
-  description                  String
-  industry                     String
-  category                     String
-  products                     Json
-  services                     Json
-  targetAudience               Json
-  brandTone                    Json
-  pricePositioning             String
-  socialLinks                  Json
-  visualStyle                  Json
-  keywords                     Json
-  primaryValueProposition      String
-  uniqueSellingPoints          Json
-  brandPersonality             Json
-  estimatedCustomerPersona     Json
-  importantPages               Json
-  contactInformation           Json
-  frequentlyMentionedTerms     Json
-  summary                      String
-  embeddingText                String
-  rawData                      Json
-  createdAt                    DateTime @default(now())
-  updatedAt                    DateTime @updatedAt
+  id                       String   @id @default(uuid())
+  businessId               String   @unique
+  description              String
+  industry                 String
+  category                 String
+  products                 Json
+  services                 Json
+  targetAudience           Json
+  brandTone                Json
+  pricePositioning         String
+  socialLinks              Json
+  visualStyle              Json
+  keywords                 Json
+  primaryValueProposition  String
+  uniqueSellingPoints      Json
+  brandPersonality         Json
+  estimatedCustomerPersona Json
+  importantPages           Json
+  contactInformation       Json
+  frequentlyMentionedTerms Json
+  summary                  String
+  embeddingText            String
+  rawData                  Json
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
 
   business Business @relation(fields: [businessId], references: [id])
 }
@@ -89,13 +89,13 @@ model Product {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  business  Business    @relation(fields: [businessId], references: [id])
+  business  Business     @relation(fields: [businessId], references: [id])
   campaigns Campaign[]
   analyses  AIAnalysis[]
 }
 
 model Campaign {
-  id                   String   @id @default(uuid())
+  id                   String    @id @default(uuid())
   businessId           String
   productId            String?
   name                 String
@@ -103,11 +103,21 @@ model Campaign {
   targetAudience       String
   preferredCreatorType String
   budget               Int
+  /// Niches/tags matched against creator niche and content tags. String[] as JSON.
+  targetNiches         Json      @default("[]")
+  tags                 Json      @default("[]")
+  /// Array of { country, state?, city? }. Empty means open worldwide.
+  targetRegions        Json      @default("[]")
+  /// "preferred" scores region fit; "required" filters creators outside the targets.
+  regionRequirement    String    @default("preferred")
+  /// "paid" | "flexible" | "barter_only"
+  barterPolicy         String    @default("paid")
+  minFollowers         Int?
   startsAt             DateTime?
   endsAt               DateTime?
   notes                String?
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
   business Business @relation(fields: [businessId], references: [id])
   product  Product? @relation(fields: [productId], references: [id])
@@ -115,17 +125,22 @@ model Campaign {
 }
 
 model Creator {
-  id        String   @id @default(uuid())
-  userId    String   @unique
-  name      String
-  handle    String   @unique
-  website   String?
-  country   String?
-  language  String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String   @id @default(uuid())
+  userId        String   @unique
+  name          String
+  handle        String   @unique
+  website       String?
+  /// ISO 3166-1 alpha-2 country code; part of the public location used for region matching.
+  country       String?
+  state         String?
+  city          String?
+  language      String?
+  /// Whether the creator accepts product/service exchange instead of paid briefs only.
+  openForBarter Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  user       User             @relation(fields: [userId], references: [id])
+  user       User            @relation(fields: [userId], references: [id])
   profile    CreatorProfile?
   pricing    CreatorPricing?
   matches    Match[]
@@ -148,29 +163,29 @@ model CreatorPricing {
 }
 
 model CreatorProfile {
-  id                         String   @id @default(uuid())
-  creatorId                  String   @unique
-  bio                        String
-  profileImage               String?
-  publicFollowerCount        Int?
-  publicFollowingCount       Int?
-  publicPostCount            Int?
-  primaryNiche               String
-  secondaryNiches            Json
-  topicsDiscussed            Json
-  contentPillars             Json
-  contentStyles              Json
-  brandPersonality           Json
-  estimatedAudience          Json
-  contentQuality             Json
-  postingBehaviour           Json
-  brandSafety                Json
-  previousCollaborations     Json
-  summary                    String
-  embeddingText              String
-  rawData                    Json
-  createdAt                  DateTime @default(now())
-  updatedAt                  DateTime @updatedAt
+  id                     String   @id @default(uuid())
+  creatorId              String   @unique
+  bio                    String
+  profileImage           String?
+  publicFollowerCount    Int?
+  publicFollowingCount   Int?
+  publicPostCount        Int?
+  primaryNiche           String
+  secondaryNiches        Json
+  topicsDiscussed        Json
+  contentPillars         Json
+  contentStyles          Json
+  brandPersonality       Json
+  estimatedAudience      Json
+  contentQuality         Json
+  postingBehaviour       Json
+  brandSafety            Json
+  previousCollaborations Json
+  summary                String
+  embeddingText          String
+  rawData                Json
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
 
   creator Creator @relation(fields: [creatorId], references: [id])
 }

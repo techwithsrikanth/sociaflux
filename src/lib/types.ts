@@ -1,3 +1,27 @@
+import type { ContentFormat } from "./niches";
+import type { Region } from "./regions";
+
+export type Reel = {
+  id: string;
+  url: string;
+  title: string;
+  format: ContentFormat;
+  niche: string;
+  views?: number;
+  likes?: number;
+  comments?: number;
+  brand?: string;
+  addedAt: string;
+};
+
+export type CreatorContact = {
+  email: string;
+  phone: string;
+  city: string;
+  country: string;
+  managerEmail?: string;
+};
+
 export type JsonRecord = Record<string, unknown>;
 
 export type BusinessProfile = {
@@ -65,6 +89,23 @@ export type CreatorProfile = {
   publicFollowingCount?: number;
   publicPostCount?: number;
   primaryNiche: string;
+  /** Niches picked from the taxonomy during onboarding, alongside the AI-inferred secondaryNiches. */
+  subNiches?: string[];
+  contentLanguages?: string[];
+  /** Portfolio work a brand reviews after shortlisting. */
+  reels?: Reel[];
+  /** Hidden from brands until an application is approved. */
+  contact?: CreatorContact;
+  /**
+   * Where the creator is based. Public, unlike `contact`, because campaigns
+   * filter and score on it. Defaults to undefined ("not stated").
+   */
+  location?: Region;
+  /**
+   * Whether the creator accepts product/service exchange instead of paid briefs
+   * only. Defaults to false; see `isOpenForBarter`.
+   */
+  openForBarter?: boolean;
   secondaryNiches: string[];
   topicsDiscussed: string[];
   contentPillars: string[];

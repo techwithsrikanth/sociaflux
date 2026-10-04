@@ -1,4 +1,6 @@
 import type { BusinessProfile, CreatorProfile, MatchResult } from "./types";
+import type { Application } from "./marketplace";
+import { createRegion } from "./regions";
 
 export const demoBusinessProfile: BusinessProfile = {
   businessName: "Aura Atelier",
@@ -350,3 +352,60 @@ export const demoCreators = demoCreatorProfiles.map((profile) => ({
     rawData: profile.rawData
   }
 }));
+
+
+const portfolio: Record<string, { reels: CreatorProfile["reels"]; contact: CreatorProfile["contact"]; primaryNiche: string; subNiches: string[]; location: CreatorProfile["location"]; openForBarter: boolean }> = {
+  "@mayaskinnotes": {
+    primaryNiche: "Skincare",
+    subNiches: ["Dermatology", "Clean beauty", "Makeup"],
+    location: createRegion("US", "California", "San Francisco")!,
+    openForBarter: false,
+    contact: { email: "maya@mayaskinnotes.com", phone: "+1 415 555 0142", city: "San Francisco", country: "United States", managerEmail: "bookings@skinnotesmedia.com" },
+    reels: [
+      { id: "reel_maya_1", url: "https://www.instagram.com/reel/C2xQ9dTr1aK/", title: "Barrier repair night routine", format: "Reel", niche: "Skincare", views: 412000, likes: 31200, comments: 890, brand: "Aura Atelier", addedAt: "2026-07-14T09:00:00.000Z" },
+      { id: "reel_maya_2", url: "https://www.instagram.com/reel/C1pLm8Qs4bD/", title: "Reading an ingredient label", format: "Reel", niche: "Dermatology", views: 268000, likes: 19800, comments: 640, addedAt: "2026-06-28T09:00:00.000Z" },
+      { id: "reel_maya_3", url: "https://www.instagram.com/p/C0nKt5Wr7cF/", title: "SPF myths carousel", format: "Carousel", niche: "Skincare", views: 96000, likes: 12400, comments: 410, addedAt: "2026-06-02T09:00:00.000Z" }
+    ]
+  },
+  "@leograntfit": {
+    primaryNiche: "Gym & strength",
+    subNiches: ["Sports nutrition", "Weight loss", "Recovery & physio"],
+    location: createRegion("US", "Illinois", "Chicago")!,
+    openForBarter: true,
+    contact: { email: "leo@leograntfit.com", phone: "+1 312 555 0188", city: "Chicago", country: "United States" },
+    reels: [
+      { id: "reel_leo_1", url: "https://www.instagram.com/reel/C3rTv2Yp9mN/", title: "5 lifts, 20 minutes", format: "Reel", niche: "Gym & strength", views: 780000, likes: 54000, comments: 1720, addedAt: "2026-08-03T09:00:00.000Z" },
+      { id: "reel_leo_2", url: "https://www.instagram.com/reel/C2wXs6Kd3jQ/", title: "Protein shake taste test", format: "UGC ad", niche: "Sports nutrition", views: 190000, likes: 14100, comments: 520, brand: "NorthFuel", addedAt: "2026-07-11T09:00:00.000Z" }
+    ]
+  },
+  "@norahomeedit": {
+    primaryNiche: "Home decor",
+    subNiches: ["Interior design", "Home organisation", "DIY & crafts"],
+    location: createRegion("GB", "England", "London")!,
+    openForBarter: true,
+    contact: { email: "hello@norahomeedit.com", phone: "+44 20 7946 0331", city: "London", country: "United Kingdom" },
+    reels: [
+      { id: "reel_nora_1", url: "https://www.instagram.com/reel/C4bNq8Lt5vR/", title: "Rental kitchen refresh", format: "Reel", niche: "Interior design", views: 335000, likes: 27600, comments: 980, addedAt: "2026-08-19T09:00:00.000Z" },
+      { id: "reel_nora_2", url: "https://www.instagram.com/p/C3kPr4Mj8wS/", title: "Small-space storage wins", format: "Carousel", niche: "Home organisation", views: 88000, likes: 9400, comments: 300, brand: "Shelfly", addedAt: "2026-07-29T09:00:00.000Z" }
+    ]
+  }
+};
+
+for (const profile of demoCreatorProfiles) {
+  const extra = portfolio[profile.handle];
+  if (!extra) continue;
+  profile.reels = extra.reels;
+  profile.contact = extra.contact;
+  profile.primaryNiche = extra.primaryNiche;
+  profile.subNiches = extra.subNiches;
+  profile.contentLanguages = ["English"];
+  profile.location = extra.location;
+  profile.openForBarter = extra.openForBarter;
+}
+
+/** Seeded against the auto-generated discovery campaign so the brand applicant board is not empty on a first run. */
+export const demoApplications: Application[] = [
+  { id: "app_demo_1", campaignId: "cmp_aura-atelier-awareness", campaignName: "Aura Atelier awareness", creatorHandle: "@mayaskinnotes", pitch: "I built my audience on sensitive-skin routines and ingredient breakdowns. For the barrier serum I would run a 3-part reel arc: the problem, the routine, the 4-week result.", quotedPrice: 2400, openToBarter: false, status: "applied", appliedAt: "2026-09-12T10:20:00.000Z" },
+  { id: "app_demo_2", campaignId: "cmp_aura-atelier-awareness", campaignName: "Aura Atelier awareness", creatorHandle: "@norahomeedit", pitch: "My audience overlaps on calm, considered routines. I would place the serum inside a morning-reset reel rather than a straight review.", quotedPrice: 1500, openToBarter: true, status: "applied", appliedAt: "2026-09-13T08:05:00.000Z" },
+  { id: "app_demo_3", campaignId: "cmp_aura-atelier-awareness", campaignName: "Aura Atelier awareness", creatorHandle: "@leograntfit", pitch: "Post-training skin recovery is an angle nobody in your category is covering. Happy to shoot UGC you can run as paid ads.", quotedPrice: 1800, openToBarter: true, status: "shortlisted", appliedAt: "2026-09-11T16:40:00.000Z" }
+];

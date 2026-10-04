@@ -2,24 +2,14 @@ import OpenAI from "openai";
 import { businessProfilePrompt, matchingPrompt } from "../prompts";
 import type { BusinessProfile, CreatorProfile, MatchResult, ScrapeResult } from "../types";
 import { computeMatch } from "../matching";
+import { inferBusinessTaxonomy } from "./taxonomy";
+import type { BusinessTaxonomy } from "./taxonomy";
 
 export interface AIProvider {
   analyzeBusiness(scrape: ScrapeResult): Promise<BusinessProfile>;
   analyzeCreator(scrape: ScrapeResult): Promise<CreatorProfile>;
   matchBusinessToCreator(business: BusinessProfile, creator: CreatorProfile, budget?: number): Promise<MatchResult>;
 }
-
-type BusinessTaxonomy = {
-  industry: string;
-  category: string;
-  products: string[];
-  services: string[];
-  audience: string[];
-  tone: string[];
-  personality: string[];
-  positioning: string;
-  visualStyle: string[];
-};
 
 const genericStopWords = new Set([
   "about",
@@ -67,7 +57,7 @@ const genericStopWords = new Set([
 ]);
 
 export function createAIProvider(): AIProvider {
-  if (process.env.AI_PROVIDER === "openai" && process.env.OPENAI_API_KEY) {
+  if (process.env.SOCIAFLUX_AI_PROVIDER === "openai" && process.env.SOCIAFLUX_OPENAI_API_KEY) {
     return new OpenAIProvider();
   }
 
@@ -79,7 +69,7 @@ class MockAIProvider implements AIProvider {
     const host = safeHost(scrape.sourceUrl);
     const businessName = cleanBusinessName(scrape.title || host);
     const text = [scrape.title, scrape.description, scrape.headings.join(". "), scrape.textSample].filter(Boolean).join(". ");
-    const taxonomy = inferBusinessTaxonomy(text, scrape.links);
+    const taxonomy = inferBusinessTaxonomy({ title: scrape.title, description: scrape.description, headings: scrape.headings, textSample: scrape.textSample, links: scrape.links });
     const terms = topTerms(text);
     const products = inferProducts(scrape, taxonomy);
     const importantPages = scrape.links.filter((link) => !link.includes("#")).slice(0, 12);
@@ -182,8 +172,8 @@ class MockAIProvider implements AIProvider {
 }
 
 class OpenAIProvider extends MockAIProvider {
-  private readonly client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-  private readonly model = process.env.OPENAI_MODEL || "gpt-4o-mini";
+  private readonly client = new OpenAI({ apiKey: process.env.SOCIAFLUX_OPENAI_API_KEY });
+  private readonly model = process.env.SOCIAFLUX_OPENAI_MODEL || "gpt-4o-mini";
 
   async analyzeBusiness(scrape: ScrapeResult): Promise<BusinessProfile> {
     const fallback = await super.analyzeBusiness(scrape);
@@ -274,100 +264,10 @@ class OpenAIProvider extends MockAIProvider {
   }
 }
 
-function inferBusinessTaxonomy(text: string, links: string[]): BusinessTaxonomy {
-  const lowered = text.toLowerCase();
-  const linkText = links.join(" ").toLowerCase();
-  const corpus = `${lowered} ${linkText}`;
-
-  if (hasAny(corpus, ["team-bhp", "automotive", "car reviews", "ownership reports", "road tests", "indian cars", "bikes", "maintenance", "buying advice"])) {
-    return {
-      industry: "Automotive media and community",
-      category: "Automotive community",
-      products: ["Car reviews", "Ownership reports", "Road tests", "Buying advice", "Automotive forum"],
-      services: ["Automotive content", "Community discussions", "Consumer vehicle research"],
-      audience: ["Car buyers", "Automotive enthusiasts", "Vehicle owners", "Indian auto community"],
-      tone: ["Detailed", "Expert", "Community-led"],
-      personality: ["Authoritative", "Practical", "Enthusiast", "Trustworthy"],
-      positioning: "Specialist community",
-      visualStyle: ["Forum-led", "Editorial", "Vehicle-focused"]
-    };
-  }
-
-  if (hasAny(corpus, ["watercolor", "watercolour", "sketchbook", "gouache", "acrylic", "canvas", "art paper", "stationery", "coloring book", "colouring book"])) {
-    return {
-      industry: "Art supplies and stationery",
-      category: "Art stationery",
-      products: ["Sketchbooks", "Watercolor journals", "Mixed media papers", "Canvas panels", "Acrylic papers", "Gouache papers", "Adult colouring books"],
-      services: ["Art supply ecommerce", "Artist community", "Art education content"],
-      audience: ["Artists", "Students", "Hobbyists", "Professional creators", "Art educators"],
-      tone: ["Creative", "Accessible", "Community-led"],
-      personality: ["Creative", "Friendly", "Practical", "Inspirational"],
-      positioning: hasAny(corpus, ["premium", "professional", "100% cotton"]) ? "Premium accessible" : "Accessible",
-      visualStyle: ["Product-led ecommerce", "Creative materials", "Studio and art supply imagery"]
-    };
-  }
-
-  if (hasAny(corpus, ["venture studio", "venture capital", "founder", "startup", "portfolio", "investor", "mvp engineering", "venture lab", "venture build", "venture scale"])) {
-    return {
-      industry: "Venture studio and startup services",
-      category: "AI venture studio",
-      products: ["Venture Lab", "Venture Build", "Venture Scale", "Portfolio support"],
-      services: ["Startup advisory", "AI-native MVP engineering", "Venture building", "Fundraising preparation", "Go-to-market support"],
-      audience: ["Founders", "Startup teams", "Institutional partners", "Enterprise leaders", "Investors"],
-      tone: ["Institutional", "Strategic", "Founder-focused"],
-      personality: ["Professional", "Ambitious", "Analytical", "Execution-oriented"],
-      positioning: "Premium institutional",
-      visualStyle: ["Modern venture studio", "AI-first technology", "Institutional startup branding"]
-    };
-  }
-
-  if (hasAny(corpus, ["ai", "automation", "agent", "saas", "software", "platform", "api"])) {
-    return {
-      industry: "Technology",
-      category: "AI software",
-      products: ["AI platform", "Automation tools", "Software services"],
-      services: ["AI implementation", "Automation", "Software delivery"],
-      audience: ["Business leaders", "Operators", "Technology teams"],
-      tone: ["Professional", "Innovative", "Direct"],
-      personality: ["Technical", "Modern", "Efficient"],
-      positioning: "Premium",
-      visualStyle: ["Modern SaaS", "Technical", "Clean interface"]
-    };
-  }
-
-  if (hasAny(corpus, ["beauty", "skin", "serum", "spf", "cosmetic", "wellness"])) {
-    return {
-      industry: "Beauty and personal care",
-      category: "Beauty",
-      products: ["Beauty products", "Wellness products"],
-      services: ["Product education", "Consumer ecommerce"],
-      audience: ["Beauty shoppers", "Wellness buyers"],
-      tone: ["Warm", "Educational", "Trustworthy"],
-      personality: ["Friendly", "Trustworthy", "Aspirational"],
-      positioning: "Premium accessible",
-      visualStyle: ["Product photography", "Lifestyle imagery", "Clean layouts"]
-    };
-  }
-
-  return {
-    industry: "General business",
-    category: "Brand",
-    products: extractCapitalizedPhrases(text).slice(0, 6),
-    services: ["Business offering", "Customer support"],
-    audience: ["Potential customers", "Brand partners"],
-    tone: ["Professional", "Informative"],
-    personality: ["Professional", "Approachable"],
-    positioning: "Unknown from public data",
-    visualStyle: ["Website-led public brand presence"]
-  };
-}
 
 function inferProducts(scrape: ScrapeResult, taxonomy: BusinessTaxonomy) {
-  if (taxonomy.category === "Art stationery") {
-    return unique([...extractProducts(scrape), ...taxonomy.products]).slice(0, 12);
-  }
-
-  return taxonomy.products;
+  // Products named on the page beat the category defaults, which are only a fallback.
+  return unique([...extractProducts(scrape), ...taxonomy.products]).slice(0, 12);
 }
 
 function extractProducts(scrape: ScrapeResult) {
@@ -603,11 +503,6 @@ function firstMeaningfulSentence(value: string) {
   return cleanText(value)
     .split(/(?<=[.!?])\s+/)
     .find((sentence) => sentence.length > 24 && !/built on replit|update this description/i.test(sentence));
-}
-
-function extractCapitalizedPhrases(text: string) {
-  const matches = cleanText(text).match(/\b[A-Z][a-zA-Z]+(?:\s+[A-Z0-9][a-zA-Z0-9%]+){1,5}\b/g) || [];
-  return unique(matches.filter((item) => !/^(Skip To|Terms Of|Privacy Policy|Powered By)$/i.test(item))).slice(0, 10);
 }
 
 function isProductLike(value: string) {
