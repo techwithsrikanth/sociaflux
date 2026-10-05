@@ -28,6 +28,10 @@ function rowToCreator(row: Row): CreatorProfile {
     subNiches: parseJson<string[]>(row.sub_niches, profile.subNiches || []),
     contentLanguages: parseJson<string[]>(row.content_languages, profile.contentLanguages || []),
     openForBarter: toBool(row.open_for_barter),
+    verified: toBool(row.verified),
+    instagram: row.instagram_user_id
+      ? { userId: toText(row.instagram_user_id), connectedAt: nullableText(row.instagram_connected_at) || undefined }
+      : undefined,
     publicFollowerCount: toInt(row.followers, profile.publicFollowerCount || 0),
     location: row.country
       ? { country: toText(row.country), state: nullableText(row.state) || undefined, city: nullableText(row.city) || undefined }
@@ -350,4 +354,54 @@ export async function saveBrand(profile: BusinessProfile, id: string): Promise<s
 export async function getBrand(id: string): Promise<BusinessProfile | null> {
   const result = await getDb().execute({ sql: "SELECT profile FROM brands WHERE id = ?", args: [id] });
   return result.rows.length ? parseJson<BusinessProfile | null>(result.rows[0].profile, null) : null;
+}
+
+/* -------------------------------------------- instagram connection */
+
+export type InstagramConnection = {
+  userId: string;
+  accessToken: string;
+  expiresAt: string;
+};
+
+/**
+ * Stores a creator's Instagram connection and marks them verified.
+ *
+ * The token lives in its own column rather than inside the profile JSON, so it
+ * is never serialised into an API response.
+ */
+export async function saveInstagramConnection(handle: string, connection: InstagramConnection) {
+  await getDb().execute({
+    sql: `UPDATE creators
+          SET instagram_user_id = ?,
+              instagram_token = ?,
+              instagram_token_expires_at = ?,
+              instagram_connected_at = COALESCE(instagram_connected_at, datetime('now')),
+              verified = 1,
+              updated_at = datetime('now')
+          WHERE handle = ?`,
+    args: [connection.userId, connection.accessToken, connection.expiresAt, normaliseHandle(handle)]
+  });
+}
+
+/** Server-only. Never expose the token through an API route. */
+export async function getInstagramToken(handle: string) {
+  const result = await getDb().execute({
+    sql: "SELECT instagram_token, instagram_token_expires_at FROM creators WHERE handle = ?",
+    args: [normaliseHandle(handle)]
+  });
+  if (!result.rows.length) return null;
+  const token = nullableText(result.rows[0].instagram_token);
+  if (!token) return null;
+  return { accessToken: token, expiresAt: nullableText(result.rows[0].instagram_token_expires_at) || undefined };
+}
+
+export async function disconnectInstagram(handle: string) {
+  await getDb().execute({
+    sql: `UPDATE creators
+          SET instagram_user_id = NULL, instagram_token = NULL, instagram_token_expires_at = NULL,
+              instagram_connected_at = NULL, verified = 0, updated_at = datetime('now')
+          WHERE handle = ?`,
+    args: [normaliseHandle(handle)]
+  });
 }

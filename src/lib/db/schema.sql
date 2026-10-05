@@ -32,6 +32,13 @@ CREATE TABLE IF NOT EXISTS creators (
   package_price     INTEGER NOT NULL DEFAULT 0,
   reel_count        INTEGER NOT NULL DEFAULT 0,
   profile           TEXT NOT NULL,              -- CreatorProfile JSON
+  -- Instagram connection. The token is deliberately NOT part of the profile
+  -- JSON, so it is never serialised to a browser.
+  instagram_user_id TEXT,
+  instagram_token   TEXT,
+  instagram_token_expires_at TEXT,
+  instagram_connected_at     TEXT,
+  verified          INTEGER NOT NULL DEFAULT 0,
   created_at        TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at        TEXT NOT NULL DEFAULT (datetime('now'))
 );

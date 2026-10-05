@@ -1,11 +1,16 @@
 import { NextResponse } from "next/server";
-import { listCreators, saveCreator } from "@/lib/db/repositories";
+import { getCreator, listCreators, saveCreator } from "@/lib/db/repositories";
 import type { CreatorProfile } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const handle = new URL(request.url).searchParams.get("handle");
+    if (handle) {
+      const creator = await getCreator(handle);
+      return NextResponse.json({ creator, creators: creator ? [creator] : [] });
+    }
     return NextResponse.json({ creators: await listCreators() });
   } catch (error) {
     return NextResponse.json({ error: message(error) }, { status: 500 });

@@ -104,6 +104,31 @@ Writes from the UI are optimistic: local state updates immediately and the
 server's version replaces it when it lands. Creator edits are debounced so
 typing through onboarding does not write on every keystroke.
 
+## Verified creator metrics
+
+Instagram serves a stripped page to datacenter IP addresses, so a hosted server
+cannot read follower counts from a public profile. Scraping works on a laptop
+and returns nothing on Vercel. The app handles this two ways:
+
+1. **Connect Instagram** (preferred). The creator authorises the app through
+   Instagram Login and metrics come from Meta directly, which works from any
+   server because the request is authenticated. Connected profiles get a
+   **Verified** badge.
+2. **Manual entry**. Creators type their follower and post counts. Average
+   likes, engagement and campaign reach projections are all derived from the
+   follower count, so filling it in restores everything downstream.
+
+Requires a Meta app with the *"Manage messaging & content on Instagram"* use
+case and the `instagram_business_basic` permission, set up through **API setup
+with Instagram login**. Only Business and Creator accounts return metrics.
+
+In development mode only accounts added as **Instagram testers** can authorise;
+App Review lifts that for public use.
+
+Access tokens are stored in their own database column, never inside the profile
+JSON, so they are not serialised into any API response. Long-lived tokens last
+about 60 days and `refreshLongLivedToken` renews them.
+
 ## Campaign briefs and planning
 
 A campaign carries everything a creator needs to make the ad, and everything a

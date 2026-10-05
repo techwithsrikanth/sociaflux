@@ -24,6 +24,29 @@ async function main() {
     await db.execute(statement);
   }
 
+  // CREATE TABLE IF NOT EXISTS will not add columns to a table that already
+  // exists, so additive changes are applied separately. SQLite has no
+  // "ADD COLUMN IF NOT EXISTS", so a duplicate-column error means it is
+  // already applied and is ignored.
+  const additions = [
+    "ALTER TABLE creators ADD COLUMN instagram_user_id TEXT",
+    "ALTER TABLE creators ADD COLUMN instagram_token TEXT",
+    "ALTER TABLE creators ADD COLUMN instagram_token_expires_at TEXT",
+    "ALTER TABLE creators ADD COLUMN instagram_connected_at TEXT",
+    "ALTER TABLE creators ADD COLUMN verified INTEGER NOT NULL DEFAULT 0"
+  ];
+  let added = 0;
+  for (const statement of additions) {
+    try {
+      await db.execute(statement);
+      added += 1;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (!/duplicate column/i.test(message)) throw error;
+    }
+  }
+  if (added) console.log(`Added ${added} new column(s) to existing tables`);
+
   const tables = await db.execute("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name");
   console.log(`Applied ${statements.length} statements to ${isRemoteDatabase() ? "Turso" : databaseUrl()}`);
   console.log("Tables:", tables.rows.map((row) => row.name).join(", "));

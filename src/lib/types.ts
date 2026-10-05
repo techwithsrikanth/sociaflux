@@ -106,6 +106,10 @@ export type CreatorProfile = {
    * only. Defaults to false; see `isOpenForBarter`.
    */
   openForBarter?: boolean;
+  /** True once the creator connected Instagram and the numbers came from Meta. */
+  verified?: boolean;
+  /** Connection metadata. The access token is never included here. */
+  instagram?: { userId: string; connectedAt?: string };
   secondaryNiches: string[];
   topicsDiscussed: string[];
   contentPillars: string[];
