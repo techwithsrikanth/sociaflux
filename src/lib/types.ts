@@ -88,6 +88,9 @@ export type CreatorProfile = {
   publicFollowerCount?: number;
   publicFollowingCount?: number;
   publicPostCount?: number;
+  /** Measured over recent posts by Business Discovery, not estimated from followers. */
+  publicAvgLikes?: number;
+  publicAvgComments?: number;
   primaryNiche: string;
   /** Niches picked from the taxonomy during onboarding, alongside the AI-inferred secondaryNiches. */
   subNiches?: string[];

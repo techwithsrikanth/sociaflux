@@ -128,6 +128,8 @@ class MockAIProvider implements AIProvider {
       publicFollowerCount: followerCount,
       publicFollowingCount: followingCount,
       publicPostCount: postCount,
+      publicAvgLikes: parseMetric(text, "Average likes"),
+      publicAvgComments: parseMetric(text, "Average comments"),
       primaryNiche: intelligence.primaryNiche,
       secondaryNiches: intelligence.secondaryNiches,
       topicsDiscussed: intelligence.topics,
@@ -201,6 +203,8 @@ class OpenAIProvider extends MockAIProvider {
       publicFollowerCount: followerCount,
       publicFollowingCount: followingCount,
       publicPostCount: postCount,
+      publicAvgLikes: parseMetric(text, "Average likes"),
+      publicAvgComments: parseMetric(text, "Average comments"),
       primaryNiche: intelligence.primaryNiche,
       secondaryNiches: intelligence.secondaryNiches,
       topicsDiscussed: intelligence.topics,
@@ -454,7 +458,7 @@ function creatorIntelligence(primaryNiche: string, secondaryNiches: string[], to
   return { primaryNiche, secondaryNiches, topics, contentPillars, contentStyles, brandPersonality, productCategories, editingQuality, brandingConsistency, dominantFormat, captionStyle, estimatedAudience: { ageGroups, interests, geography, languages } };
 }
 
-function parseMetric(text: string, label: "Followers" | "Following" | "Posts") {
+function parseMetric(text: string, label: "Followers" | "Following" | "Posts" | "Average likes" | "Average comments") {
   const match = text.match(new RegExp(`${label}:\\s*([\\d.,]+\\s*[KMB]?)`, "i"));
   return match ? parseCompactNumber(match[1]) : undefined;
 }

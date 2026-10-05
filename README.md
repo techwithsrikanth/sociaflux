@@ -108,15 +108,54 @@ typing through onboarding does not write on every keystroke.
 
 Instagram serves a stripped page to datacenter IP addresses, so a hosted server
 cannot read follower counts from a public profile. Scraping works on a laptop
-and returns nothing on Vercel. The app handles this two ways:
+and returns nothing on Vercel. The app handles this three ways, in this order:
 
-1. **Connect Instagram** (preferred). The creator authorises the app through
-   Instagram Login and metrics come from Meta directly, which works from any
-   server because the request is authenticated. Connected profiles get a
-   **Verified** badge.
-2. **Manual entry**. Creators type their follower and post counts. Average
+1. **Business Discovery** (covers anyone). The server looks the handle up
+   through one professional account that *we* own, so no creator has to log in
+   to be analysed. Public Business and Creator accounts only.
+2. **Connect Instagram**. The creator authorises the app through Instagram
+   Login and their own metrics come from Meta directly. Connected profiles get
+   a **Verified** badge, which Business Discovery does not grant, because the
+   creator proved they control the account.
+3. **Manual entry**. Creators type their follower and post counts. Average
    likes, engagement and campaign reach projections are all derived from the
    follower count, so filling it in restores everything downstream.
+
+### Business Discovery
+
+`POST /api/analyze/creator` tries Business Discovery first and silently falls
+back to scraping, reporting which one answered as `source` in the response.
+
+Two accounts are involved and confusing them is the usual setup mistake:
+
+| | Account |
+| --- | --- |
+| **The lens** | An Instagram professional account you control, linked to a Facebook Page. Its id is `SOCIAFLUX_INSTAGRAM_DISCOVERY_USER_ID`. |
+| **The target** | Whoever is being looked up. Needs no relationship to the app, but must be public and professional. |
+
+The token is a **Facebook** token (`EAA…`), not an Instagram Login token
+(`IGAA…`), and the two are not interchangeable — `graph.facebook.com` rejects
+the latter outright. It needs `instagram_basic`, `pages_show_list` and
+`pages_read_engagement`.
+
+```bash
+npm run ig:setup              # verify the token, print the lens account id
+npm run ig:setup cristiano    # ...and prove a lookup works
+```
+
+Because the lens account belongs to the app's own admin, this works while the
+Meta app is still in Development mode. App Review and Business Verification are
+only needed to run it publicly in production.
+
+A long-lived **Page** token does not expire, so prefer one over a user token
+and the 60-day refresh problem disappears.
+
+Unlike scraping, Business Discovery returns recent posts, so average likes and
+comments are **measured** rather than inferred from follower count. The UI drops
+the "est." suffix when that is the case.
+
+What it will never return: email, phone, audience demographics, or anything at
+all for a private or personal account.
 
 Requires a Meta app with the *"Manage messaging & content on Instagram"* use
 case and the `instagram_business_basic` permission, set up through **API setup
@@ -225,12 +264,12 @@ Country codes are ISO 3166-1 alpha-2. Inputs are canonicalised on the way in, so
 npm test
 ```
 
-Runs `tests/*.test.ts` on the Node test runner via `tsx` — 165 cases covering tag
+Runs `tests/*.test.ts` on the Node test runner via `tsx` — 185 cases covering tag
 intersection, barter policy, region specificity, the hard filters, score
 weighting and ranking order, the reach/conversion projection model, and the
 business classifier including the Samsung and Apple regressions, and the
-database repositories. The database tests run against a throwaway local SQLite
-file, never against Turso.
+database repositories, and the Instagram Business Discovery parser. The
+database tests run against a throwaway local SQLite file, never against Turso.
 
 ## Deployment
 

@@ -12,7 +12,9 @@
         "db:seed": "tsx --env-file=.env.local scripts/db-seed.ts",
         "prisma:generate": "prisma generate",
         "prisma:migrate": "prisma migrate dev",
-        "prisma:seed": "tsx prisma/seed.ts"
+        "prisma:seed": "tsx prisma/seed.ts",
+        "ig:setup": "tsx --env-file=.env.local scripts/ig-discovery-setup.ts",
+        "ig:token": "tsx --env-file=.env.local scripts/ig-token-refresh.ts"
     },
     "dependencies": {
         "@libsql/client": "^0.18.0",
