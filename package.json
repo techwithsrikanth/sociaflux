@@ -14,7 +14,8 @@
         "prisma:migrate": "prisma migrate dev",
         "prisma:seed": "tsx prisma/seed.ts",
         "ig:setup": "tsx --env-file=.env.local scripts/ig-discovery-setup.ts",
-        "ig:token": "tsx --env-file=.env.local scripts/ig-token-refresh.ts"
+        "ig:token": "tsx --env-file=.env.local scripts/ig-token-refresh.ts",
+        "auth:password": "tsx --env-file=.env.local scripts/set-password.ts"
     },
     "dependencies": {
         "@libsql/client": "^0.18.0",
