@@ -88,3 +88,20 @@ CREATE TABLE IF NOT EXISTS applications (
 
 CREATE INDEX IF NOT EXISTS idx_applications_campaign ON applications (campaign_id, status);
 CREATE INDEX IF NOT EXISTS idx_applications_creator  ON applications (creator_handle);
+
+-- Accounts. Separate from `creators` and `brands` because a login is not a
+-- profile: an account exists before any profile is filled in, and the password
+-- hash must never travel with profile JSON that gets serialised to a browser.
+CREATE TABLE IF NOT EXISTS users (
+  id            TEXT PRIMARY KEY,
+  email         TEXT NOT NULL UNIQUE,           -- lowercased on the way in
+  password_hash TEXT NOT NULL,
+  role          TEXT NOT NULL,                  -- 'creator' | 'brand'
+  display_name  TEXT NOT NULL DEFAULT '',
+  handle        TEXT UNIQUE,                    -- creators: the profile owned
+  brand_id      TEXT,                           -- brands: the profile owned
+  created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+  last_login_at TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_users_handle ON users (handle);

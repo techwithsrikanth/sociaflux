@@ -5,7 +5,7 @@ SociaFlux is an AI-powered creator-brand matchmaking platform for onboarding bra
 ## Highlights
 
 - Separate brand/business and creator workspaces
-- Handle-based creator sign-in, so several creator profiles can coexist in one demo
+- Email and password accounts, with signed session cookies and route guards
 - Brand onboarding with AI-assisted persona questions
 - Product persona builder, plus campaign posting with niche targeting, minimum audience size and deliverables
 - Creator onboarding with a structured niche taxonomy (primary niche, sub-niches, content languages)
@@ -59,6 +59,45 @@ two workspaces share one marketplace across browsers and devices.
 4. **Brand → Applicants.** Filter applicants by niche, audience size, quote or barter, review their reels inline, shortlist, and approve. Approving unlocks that creator's email and phone number.
 
 Sign in under a different handle to add a second applicant to the same campaign.
+
+## Accounts and sessions
+
+Both workspaces are behind a real login. An account is an email, a password and
+a role; creators also own one Instagram handle, which is what ties the account
+to its profile.
+
+| Route | Purpose |
+| --- | --- |
+| `POST /api/auth/signup` | create an account, claim the handle, start a session |
+| `POST /api/auth/login` | email and password only — the handle comes back from the account |
+| `POST /api/auth/logout` | expire the cookie |
+| `GET /api/auth/session` | who is signed in, or `null` |
+
+Passwords are hashed with **scrypt** from `node:crypto` — memory-hard, no
+dependency to keep patched. Cost parameters live inside each hash, so raising
+them later only affects new passwords and `needsRehash` re-hashes the rest at
+next login.
+
+Sessions are **signed cookies rather than database rows**, so verifying one
+costs no query and `src/middleware.ts` can check every request. The trade is
+that a session cannot be revoked before it expires; rotating
+`SOCIAFLUX_SESSION_SECRET` invalidates all of them at once. Signing uses Web
+Crypto, not `node:crypto`, so the same code runs in edge middleware.
+
+Middleware is navigation, not a security boundary — it only redirects. Anything
+that changes data or reveals private fields checks again server-side via
+`src/lib/auth/guard.ts`, because an API route can be called directly.
+
+Login failures return one message for both "no such account" and "wrong
+password", so the response cannot be used to discover which emails are
+registered.
+
+### Signing up with an existing handle
+
+A creator profile may predate accounts, or have been created by an Instagram
+connection. Signing up with that handle claims it, unless another account
+already has — then sign-up is refused rather than silently taking over
+somebody's profile.
 
 ## Database
 
@@ -264,11 +303,12 @@ Country codes are ISO 3166-1 alpha-2. Inputs are canonicalised on the way in, so
 npm test
 ```
 
-Runs `tests/*.test.ts` on the Node test runner via `tsx` — 185 cases covering tag
+Runs `tests/*.test.ts` on the Node test runner via `tsx` — 201 cases covering tag
 intersection, barter policy, region specificity, the hard filters, score
 weighting and ranking order, the reach/conversion projection model, and the
 business classifier including the Samsung and Apple regressions, and the
-database repositories, and the Instagram Business Discovery parser. The
+database repositories, the Instagram Business Discovery parser, and password hashing and session
+signing. The
 database tests run against a throwaway local SQLite file, never against Turso.
 
 ## Deployment
