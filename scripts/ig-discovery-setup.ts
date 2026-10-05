@@ -53,33 +53,49 @@ async function main() {
   }
 
   console.log("\n2. Finding the Instagram account linked to your Facebook Page\n");
-  const pages = (await graph("me/accounts", { fields: "name,instagram_business_account{id,username}" })).data as
-    | Array<{ name?: string; instagram_business_account?: { id?: string; username?: string } }>
-    | undefined;
 
-  if (!pages?.length) {
-    console.log("   No Facebook Pages on this account. Create a Page and link your Instagram");
-    console.log("   professional account to it (Instagram app > Settings > Accounts Centre).");
-    process.exitCode = 1;
-    return;
-  }
-
+  // A Page token's `me` is the Page itself and has no `accounts` edge, so the
+  // user-token path throws. That is fine: once the lens id is configured the
+  // Page lookup is only a convenience, so a Page token skips straight to it.
   let lensUserId = "";
-  for (const page of pages) {
-    const ig = page.instagram_business_account;
-    console.log(`   Page "${page.name}" -> ${ig?.id ? `@${ig.username} (${ig.id})` : "no Instagram account linked"}`);
-    if (ig?.id && !lensUserId) lensUserId = ig.id;
-  }
+  if (debug?.type === "PAGE") {
+    console.log("   Page token in use; the lens id comes from configuration rather than discovery.");
+    if (!configuredUserId) {
+      console.log("\n   SOCIAFLUX_INSTAGRAM_DISCOVERY_USER_ID is not set. Run `npm run ig:token`,");
+      console.log("   which writes both the Page token and the id, then re-run.");
+      process.exitCode = 1;
+      return;
+    }
+  } else {
+    const pages = (await graph("me/accounts", { fields: "name,instagram_business_account{id,username}" })).data as
+      | Array<{ name?: string; instagram_business_account?: { id?: string; username?: string } }>
+      | undefined;
 
-  if (!lensUserId) {
-    console.log("\n   None of your Pages has an Instagram account linked yet. Link one, then re-run.");
-    process.exitCode = 1;
-    return;
-  }
+    if (!pages?.length) {
+      console.log("   No Facebook Pages on this account. Create a Page and link your Instagram");
+      console.log("   professional account to it (Instagram app > Settings > Accounts Centre).");
+      process.exitCode = 1;
+      return;
+    }
 
-  console.log(`\n   Set this in .env.local and Vercel:\n   SOCIAFLUX_INSTAGRAM_DISCOVERY_USER_ID="${lensUserId}"`);
-  if (configuredUserId && configuredUserId !== lensUserId) {
-    console.log(`   (currently set to ${configuredUserId})`);
+    for (const page of pages) {
+      const ig = page.instagram_business_account;
+      console.log(`   Page "${page.name}" -> ${ig?.id ? `@${ig.username} (${ig.id})` : "no Instagram account linked"}`);
+      if (ig?.id && !lensUserId) lensUserId = ig.id;
+    }
+
+    if (!lensUserId && !configuredUserId) {
+      console.log("\n   None of your Pages has an Instagram account linked yet. Link one, then re-run.");
+      process.exitCode = 1;
+      return;
+    }
+
+    if (lensUserId) {
+      console.log(`\n   Set this in .env.local and Vercel:\n   SOCIAFLUX_INSTAGRAM_DISCOVERY_USER_ID="${lensUserId}"`);
+      if (configuredUserId && configuredUserId !== lensUserId) {
+        console.log(`   (currently set to ${configuredUserId})`);
+      }
+    }
   }
 
   const target = process.argv[2];
