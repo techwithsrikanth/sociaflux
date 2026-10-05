@@ -8,7 +8,7 @@ import { signInBrand, signInCreator } from "@/lib/creator-store";
 const productName = process.env.NEXT_PUBLIC_SOCIAFLUX_PRODUCT_NAME || "SociaFlux";
 
 type LoginRole = "brand" | "creator";
-type Mode = "signin" | "signup";
+type Mode = "signin" | "signup" | "forgot";
 
 const copy = {
   brand: {
@@ -40,6 +40,7 @@ export default function AuthPage({ role }: { role: LoginRole }) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [next, setNext] = useState("");
+  const [notice, setNotice] = useState("");
 
   // Middleware adds ?next= when it turns someone away, so they resume where
   // they were headed. Read from the URL directly rather than useSearchParams,
@@ -49,8 +50,31 @@ export default function AuthPage({ role }: { role: LoginRole }) {
     if (target && target.startsWith("/")) setNext(target);
   }, []);
 
+  async function requestReset() {
+    setError("");
+    setNotice("");
+    if (!email.trim()) return setError("Enter your email address.");
+
+    setBusy(true);
+    try {
+      const response = await fetch("/api/auth/forgot", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email })
+      });
+      const data = (await response.json().catch(() => ({}))) as { message?: string };
+      setBusy(false);
+      setNotice(data.message || "If an account exists for that email, a reset link is on its way.");
+    } catch {
+      setBusy(false);
+      setError("Could not reach the server. Check your connection and try again.");
+    }
+  }
+
   async function submit() {
     setError("");
+
+    if (mode === "forgot") return requestReset();
 
     if (mode === "signup" && role === "creator" && !handle.trim()) {
       return setError("Enter the Instagram handle you create under.");
@@ -101,12 +125,12 @@ export default function AuthPage({ role }: { role: LoginRole }) {
         <div className="p-8 md:p-12">
           <div className="mb-10 flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-md bg-ai text-white"><BrainCircuit size={20} /></div><div><p className="text-sm font-semibold">{productName}</p><p className="text-xs text-graphite">AI creator matchmaking</p></div></div>
           <p className="text-xs font-semibold uppercase text-moss">{details.eyebrow}</p>
-          <h1 className="mt-3 max-w-2xl text-4xl font-semibold tracking-tight text-ink">{signingUp ? `Create your ${role} account` : details.title}</h1>
-          <p className="mt-4 max-w-xl text-sm leading-6 text-graphite">{details.text}</p>
+          <h1 className="mt-3 max-w-2xl text-4xl font-semibold tracking-tight text-ink">{mode === "forgot" ? "Reset your password" : signingUp ? `Create your ${role} account` : details.title}</h1>
+          <p className="mt-4 max-w-xl text-sm leading-6 text-graphite">{mode === "forgot" ? "Enter the email on your account and we will send a link to set a new password." : details.text}</p>
 
-          <div className="mt-8 inline-flex rounded-md border border-line bg-paper p-1">
-            {(["signin", "signup"] as Mode[]).map((option) => <button className={`h-9 rounded px-4 text-sm font-semibold ${mode === option ? "bg-ai text-white" : "text-graphite"}`} key={option} onClick={() => { setMode(option); setError(""); }} type="button">{option === "signin" ? "Sign in" : "Create account"}</button>)}
-          </div>
+          {mode === "forgot" ? null : <div className="mt-8 inline-flex rounded-md border border-line bg-paper p-1">
+            {(["signin", "signup"] as Mode[]).map((option) => <button className={`h-9 rounded px-4 text-sm font-semibold ${mode === option ? "bg-ai text-white" : "text-graphite"}`} key={option} onClick={() => { setMode(option); setError(""); setNotice(""); }} type="button">{option === "signin" ? "Sign in" : "Create account"}</button>)}
+          </div>}
 
           <form className="mt-6 grid gap-3 md:grid-cols-2" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
             {signingUp && role === "creator" ? <label className="block text-sm font-medium text-graphite">Instagram handle
@@ -116,18 +140,21 @@ export default function AuthPage({ role }: { role: LoginRole }) {
               <input className="mt-1 h-11 w-full rounded-md border border-line bg-paper px-3 text-ink" onChange={(event) => setName(event.target.value)} placeholder={role === "brand" ? "Aura Atelier" : "Maya Chen"} value={name} />
             </label> : null}
             <label className="block text-sm font-medium text-graphite">Email
-              <input autoComplete="email" className="mt-1 h-11 w-full rounded-md border border-line bg-paper px-3 text-ink" onChange={(event) => { setEmail(event.target.value); setError(""); }} placeholder={`${role}@sociaflux.ai`} type="email" value={email} />
+              <input autoComplete="email" className="mt-1 h-11 w-full rounded-md border border-line bg-paper px-3 text-ink" onChange={(event) => { setEmail(event.target.value); setError(""); setNotice(""); }} placeholder={`${role}@sociaflux.ai`} type="email" value={email} />
             </label>
-            <label className="block text-sm font-medium text-graphite">Password
+            {mode === "forgot" ? null : <label className="block text-sm font-medium text-graphite">Password
               <input autoComplete={signingUp ? "new-password" : "current-password"} className="mt-1 h-11 w-full rounded-md border border-line bg-paper px-3 text-ink" onChange={(event) => { setPassword(event.target.value); setError(""); }} placeholder="••••••••" type="password" value={password} />
-            </label>
+            </label>}
 
             {error ? <p className="text-sm text-coral md:col-span-2" role="alert">{error}</p> : null}
+            {notice ? <p className="text-sm text-moss md:col-span-2" role="status">{notice}</p> : null}
             {signingUp ? <p className="text-xs text-graphite md:col-span-2">At least 8 characters. Your email and password are how you sign back in.</p> : null}
 
+            {mode === "signin" ? <button className="justify-self-start text-sm font-semibold text-ai md:col-span-2" onClick={() => { setMode("forgot"); setError(""); setNotice(""); }} type="button">Forgot password?</button> : null}
+
             <div className="md:col-span-2">
-              <button className="inline-flex h-11 items-center gap-2 rounded-md bg-ai px-5 text-sm font-semibold text-white disabled:opacity-60" disabled={busy} type="submit">{busy ? <Loader2 className="animate-spin" size={16} /> : <Icon size={16} />} {signingUp ? "Create account" : `Sign in as ${role}`}</button>
-              <button className="ml-3 inline-flex h-11 items-center rounded-md border border-line bg-card px-5 text-sm font-semibold text-graphite" onClick={() => (router.push as (href: string) => void)("/")} type="button">Back</button>
+              <button className="inline-flex h-11 items-center gap-2 rounded-md bg-ai px-5 text-sm font-semibold text-white disabled:opacity-60" disabled={busy} type="submit">{busy ? <Loader2 className="animate-spin" size={16} /> : <Icon size={16} />} {mode === "forgot" ? "Send reset link" : signingUp ? "Create account" : `Sign in as ${role}`}</button>
+              <button className="ml-3 inline-flex h-11 items-center rounded-md border border-line bg-card px-5 text-sm font-semibold text-graphite" onClick={() => { if (mode === "forgot") { setMode("signin"); setError(""); setNotice(""); } else (router.push as (href: string) => void)("/"); }} type="button">{mode === "forgot" ? "Back to sign in" : "Back"}</button>
             </div>
           </form>
         </div>

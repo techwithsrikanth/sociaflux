@@ -105,3 +105,17 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 CREATE INDEX IF NOT EXISTS idx_users_handle ON users (handle);
+
+-- Password reset tokens. Only a hash of the token is stored, so a leaked table
+-- cannot be used to reset an account password. The raw token exists only in
+-- the link that was sent. Single-use (used_at) and short-lived (expires_at).
+CREATE TABLE IF NOT EXISTS password_resets (
+  id         TEXT PRIMARY KEY,
+  user_id    TEXT NOT NULL,
+  token_hash TEXT NOT NULL UNIQUE,            -- sha256 of the raw token, hex
+  expires_at TEXT NOT NULL,
+  used_at    TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_password_resets_user ON password_resets (user_id);

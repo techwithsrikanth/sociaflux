@@ -72,6 +72,8 @@ to its profile.
 | `POST /api/auth/login` | email and password only — the handle comes back from the account |
 | `POST /api/auth/logout` | expire the cookie |
 | `GET /api/auth/session` | who is signed in, or `null` |
+| `POST /api/auth/forgot` | email a single-use reset link (always the same reply) |
+| `POST /api/auth/reset` | set a new password from a valid reset token |
 
 Passwords are hashed with **scrypt** from `node:crypto` — memory-hard, no
 dependency to keep patched. Cost parameters live inside each hash, so raising
@@ -91,6 +93,19 @@ that changes data or reveals private fields checks again server-side via
 Login failures return one message for both "no such account" and "wrong
 password", so the response cannot be used to discover which emails are
 registered.
+
+### Forgotten passwords
+
+A **Forgot password?** link on each login page emails a single-use reset link
+to the address on file. Only a SHA-256 of the token is stored, so a leaked
+`password_resets` table cannot reset anyone: the raw token lives only in the
+link. Tokens expire in an hour, requesting a new one retires the old, and
+`consumeResetToken` marks a token used atomically so it cannot be replayed.
+
+With no `SOCIAFLUX_RESEND_API_KEY` set, the link is written to the server log
+rather than sent — enough to test locally, and to recover an account from
+Vercel function logs before a provider is wired up. For a locked-out account
+with no inbox access, `npm run auth:password <email>` sets one directly.
 
 ### Signing up with an existing handle
 
@@ -303,12 +318,12 @@ Country codes are ISO 3166-1 alpha-2. Inputs are canonicalised on the way in, so
 npm test
 ```
 
-Runs `tests/*.test.ts` on the Node test runner via `tsx` — 201 cases covering tag
+Runs `tests/*.test.ts` on the Node test runner via `tsx` — 206 cases covering tag
 intersection, barter policy, region specificity, the hard filters, score
 weighting and ranking order, the reach/conversion projection model, and the
 business classifier including the Samsung and Apple regressions, and the
-database repositories, the Instagram Business Discovery parser, and password hashing and session
-signing. The
+database repositories, the Instagram Business Discovery parser, and password hashing session
+signing, and the single-use password-reset tokens. The
 database tests run against a throwaway local SQLite file, never against Turso.
 
 ## Deployment
