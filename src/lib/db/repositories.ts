@@ -330,6 +330,8 @@ export async function inviteApplication(input: {
   campaignId: string;
   campaignName: string;
   creatorHandle: string;
+  /** The creator's own rate the invitation is made at; accepting agrees to it. */
+  quotedPrice?: number;
   brandNote?: string;
 }): Promise<{ application: Application; created: boolean }> {
   const handle = normaliseHandle(input.creatorHandle);
@@ -345,7 +347,9 @@ export async function inviteApplication(input: {
     campaignName: input.campaignName,
     creatorHandle: handle,
     pitch: "",
-    quotedPrice: 0,
+    // Seeded with the creator's package rate, so when they accept the deal is
+    // their price rather than zero.
+    quotedPrice: Math.max(0, Math.round(input.quotedPrice || 0)),
     openToBarter: false,
     status: "invited",
     appliedAt: new Date().toISOString(),
