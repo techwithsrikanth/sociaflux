@@ -318,7 +318,7 @@ Country codes are ISO 3166-1 alpha-2. Inputs are canonicalised on the way in, so
 npm test
 ```
 
-Runs `tests/*.test.ts` on the Node test runner via `tsx` — 230 cases covering tag
+Runs `tests/*.test.ts` on the Node test runner via `tsx` — 234 cases covering tag
 intersection, barter policy, region specificity, the hard filters, score
 weighting and ranking order, the reach/conversion projection model, and the
 business classifier including the Samsung and Apple regressions, and the

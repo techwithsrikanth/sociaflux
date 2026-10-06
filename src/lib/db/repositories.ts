@@ -347,7 +347,7 @@ export async function inviteApplication(input: {
     pitch: "",
     quotedPrice: 0,
     openToBarter: false,
-    status: "shortlisted",
+    status: "invited",
     appliedAt: new Date().toISOString(),
     brandNote: input.brandNote || "The brand reached out to you about this campaign."
   };

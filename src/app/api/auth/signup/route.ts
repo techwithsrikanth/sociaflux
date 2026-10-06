@@ -49,7 +49,7 @@ export async function POST(request: Request) {
     await saveCreator(profile);
   }
 
-  const token = await createSessionToken({ userId: user.id, role, email, handle });
+  const token = await createSessionToken({ userId: user.id, role, email, name: user.displayName, handle });
   const response = NextResponse.json({ user: { email, role, name: user.displayName, handle } });
   response.cookies.set(SESSION_COOKIE, token, sessionCookieOptions(SESSION_MAX_AGE_SECONDS));
   return response;

@@ -20,6 +20,8 @@ export type Session = {
   userId: string;
   role: SessionRole;
   email: string;
+  /** Display name — the brand name for brands, the creator's name for creators. */
+  name?: string;
   /** Creators only: the profile this account owns. */
   handle?: string;
 };
@@ -95,7 +97,7 @@ export async function readSessionToken(token: string | undefined | null): Promis
     const payload = JSON.parse(new TextDecoder().decode(fromBase64url(encoded))) as SessionPayload;
     if (!payload.userId || !payload.role) return null;
     if (typeof payload.exp !== "number" || payload.exp * 1000 < Date.now()) return null;
-    return { userId: payload.userId, role: payload.role, email: payload.email, handle: payload.handle };
+    return { userId: payload.userId, role: payload.role, email: payload.email, name: payload.name, handle: payload.handle };
   } catch {
     return null;
   }

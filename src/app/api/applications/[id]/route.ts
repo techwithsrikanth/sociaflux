@@ -4,7 +4,7 @@ import type { ApplicationStatus } from "@/lib/marketplace";
 
 export const dynamic = "force-dynamic";
 
-const STATUSES: ApplicationStatus[] = ["applied", "shortlisted", "approved", "rejected"];
+const STATUSES: ApplicationStatus[] = ["applied", "invited", "shortlisted", "approved", "rejected"];
 
 /** Brand-side decision on one application. */
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {

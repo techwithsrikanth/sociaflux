@@ -27,7 +27,7 @@ export async function POST(request: Request) {
   }
   await recordLogin(user.id);
 
-  const token = await createSessionToken({ userId: user.id, role: user.role, email: user.email, handle: user.handle });
+  const token = await createSessionToken({ userId: user.id, role: user.role, email: user.email, name: user.displayName, handle: user.handle });
   const response = NextResponse.json({ user: { email: user.email, role: user.role, name: user.displayName, handle: user.handle } });
   response.cookies.set(SESSION_COOKIE, token, sessionCookieOptions(SESSION_MAX_AGE_SECONDS));
   return response;

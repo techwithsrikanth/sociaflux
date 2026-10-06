@@ -101,7 +101,7 @@ export type Campaign = {
 /** Shape of campaigns persisted before region/barter targeting existed. */
 type LegacyCampaignFields = { acceptsBarter?: boolean; location?: string };
 
-export type ApplicationStatus = "applied" | "shortlisted" | "approved" | "rejected";
+export type ApplicationStatus = "applied" | "invited" | "shortlisted" | "approved" | "rejected";
 
 export type Application = {
   id: string;
@@ -119,6 +119,7 @@ export type Application = {
 
 export const APPLICATION_STATUS_LABEL: Record<ApplicationStatus, string> = {
   applied: "Applied",
+  invited: "Invited",
   shortlisted: "Shortlisted",
   approved: "Approved",
   rejected: "Not selected"

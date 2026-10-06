@@ -6,5 +6,5 @@ import { SESSION_COOKIE, readSessionToken } from "@/lib/auth/session";
 export async function GET() {
   const session = await readSessionToken((await cookies()).get(SESSION_COOKIE)?.value);
   if (!session) return NextResponse.json({ session: null }, { status: 200 });
-  return NextResponse.json({ session: { email: session.email, role: session.role, handle: session.handle } });
+  return NextResponse.json({ session: { email: session.email, role: session.role, name: session.name, handle: session.handle } });
 }

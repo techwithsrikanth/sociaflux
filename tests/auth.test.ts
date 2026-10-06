@@ -68,7 +68,8 @@ describe("session tokens", () => {
 
   it("round-trips a session", async () => {
     const decoded = await readSessionToken(await createSessionToken(session));
-    assert.deepEqual(decoded, session);
+    // `name` is optional and absent here, so it comes back undefined.
+    assert.deepEqual(decoded, { ...session, name: undefined });
   });
 
   it("rejects a tampered payload", async () => {
@@ -94,6 +95,12 @@ describe("session tokens", () => {
     const token = await createSessionToken(session);
     const payload = Buffer.from(token.split(".")[0], "base64url").toString();
     assert.ok(!/password|hash|secret/i.test(payload));
+  });
+
+  it("round-trips the display name, so the workspace knows the brand/creator name on reload", async () => {
+    const named = { ...session, role: "brand" as const, name: "Vivo India", handle: undefined };
+    const decoded = await readSessionToken(await createSessionToken(named));
+    assert.equal(decoded?.name, "Vivo India");
   });
 });
 

@@ -7,6 +7,7 @@ import { after, before, describe, it } from "node:test";
 import { closeDb, getDb } from "../src/lib/db/client";
 import {
   getBrand,
+  getCreator,
   inviteApplication,
   listApplications,
   listCampaigns,
@@ -113,16 +114,28 @@ describe("brand and creator marketplace flow", () => {
   });
 });
 
-describe("brand reaching out to a creator", () => {
-  it("creates a shortlisted application the brand can then approve", async () => {
+describe("brand reaching out to a creator (invitation lifecycle)", () => {
+  it("creates an invitation the creator must act on, not an auto-approval", async () => {
     await saveCreator(creator("@newcreator"));
     const { application: invited, created } = await inviteApplication({
       id: "app_invite", campaignId: "cmp_vivo", campaignName: "Vivo India — Vivo V80", creatorHandle: "@newcreator"
     });
     assert.equal(created, true);
-    assert.equal(invited.status, "shortlisted");
-    // It shows up for the brand under that campaign.
-    assert.ok((await listApplications({ campaignId: "cmp_vivo" })).some((a) => a.creatorHandle === "@newcreator"));
+    // Pending the creator's decision — the brand cannot see contact yet.
+    assert.equal(invited.status, "invited");
+    assert.ok((await listApplications({ creatorHandle: "@newcreator" })).some((a) => a.status === "invited"));
+  });
+
+  it("lets the creator accept, which moves it to approved for the brand", async () => {
+    const accepted = await setApplicationStatus("app_invite", "approved");
+    assert.equal(accepted?.status, "approved");
+  });
+
+  it("lets the creator reject an invitation", async () => {
+    await saveCreator(creator("@rejector"));
+    const { application } = await inviteApplication({ id: "app_reject", campaignId: "cmp_vivo", campaignName: "x", creatorHandle: "@rejector" });
+    const rejected = await setApplicationStatus(application.id, "rejected");
+    assert.equal(rejected?.status, "rejected");
   });
 
   it("never overwrites an application the creator already made", async () => {
@@ -132,7 +145,22 @@ describe("brand reaching out to a creator", () => {
       id: "app_invite_2", campaignId: "cmp_sam", campaignName: "x", creatorHandle: "@mamitha_baiju"
     });
     assert.equal(created, false);
-    // The approval stands — reaching out did not downgrade it to shortlisted.
+    // The approval stands — reaching out did not downgrade it.
     assert.equal(existing.status, "approved");
+  });
+});
+
+describe("creator data survives a round-trip (no Unknown after relogin)", () => {
+  it("saves and reloads a creator with its real metrics", async () => {
+    const withMetrics = creator("@persisttest");
+    withMetrics.publicFollowerCount = 6_883_029;
+    withMetrics.publicPostCount = 247;
+    await saveCreator(withMetrics);
+
+    // This is exactly what login does: fetch the profile from the DB by handle.
+    const reloaded = await getCreator("@persisttest");
+    assert.equal(reloaded?.handle, "@persisttest");
+    assert.equal(reloaded?.publicFollowerCount, 6_883_029);
+    assert.equal(reloaded?.publicPostCount, 247);
   });
 });

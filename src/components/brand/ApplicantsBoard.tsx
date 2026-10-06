@@ -1,6 +1,6 @@
 "use client";
 
-import { AtSign, BadgeCheck, CheckCircle2, Gauge, Lock, Mail, MapPin, Phone, Star, Target, Users, Wand2, X } from "lucide-react";
+import { AtSign, BadgeCheck, CheckCircle2, Clock, Gauge, Lock, Mail, MapPin, Phone, Star, Target, Users, Wand2, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import ReelGrid from "@/components/ReelGrid";
 import { BriefAssetList } from "@/components/brand/BriefAssets";
@@ -255,10 +255,12 @@ function ApplicantCard({ onDecide, onOpen, rank, row }: { onDecide: (id: string,
 
     <div className="mt-5 flex flex-wrap items-center gap-3">
       <GhostButton onClick={onOpen}><Users size={15} /> View full profile</GhostButton>
+      {application.status === "invited" ? <span className="inline-flex items-center gap-2 rounded-md border border-ai/20 bg-ai/5 px-3 py-2 text-xs font-semibold text-ai"><Clock size={14} /> You reached out &mdash; waiting for the creator to accept</span> : <>
       {application.status !== "shortlisted" && !approved ? <GhostButton onClick={() => onDecide(application.id, "shortlisted")}><Star size={15} /> Shortlist</GhostButton> : null}
       {!approved ? <PrimaryButton onClick={() => onDecide(application.id, "approved")}><BadgeCheck size={15} /> Approve for campaign</PrimaryButton> : null}
       {application.status !== "rejected" && !approved ? <button className="text-sm font-semibold text-coral" onClick={() => onDecide(application.id, "rejected")} type="button">Not a fit</button> : null}
       {approved ? <button className="text-sm font-semibold text-graphite" onClick={() => onDecide(application.id, "shortlisted")} type="button">Undo approval</button> : null}
+      </>}
     </div>
   </article>;
 }
