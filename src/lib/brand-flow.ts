@@ -11,8 +11,8 @@
  * the list.
  */
 
-import type { Campaign } from "./marketplace";
-import type { BusinessProfile } from "./types";
+import type { Application, Campaign } from "./marketplace";
+import type { BusinessProfile, CreatorProfile } from "./types";
 
 const DEFAULT_CAMPAIGN_NAME = "Launch campaign";
 const DEFAULT_PRODUCT_NAME = "Hero product";
@@ -103,6 +103,48 @@ export function emptyBusinessProfile(name: string): BusinessProfile {
 /** True once a brand has actually set up its persona, not just its name. */
 export function brandProfileReady(profile: BusinessProfile): boolean {
   return Boolean(profile.businessName && profile.summary);
+}
+
+export type CampaignBudgetStatus = {
+  budget: number;
+  /** Sum of the rates of creators who have accepted (approved) for this campaign. */
+  committed: number;
+  /** Budget left to reach out to more creators. Never negative. */
+  remaining: number;
+  /** How many creators are committed. */
+  count: number;
+  /** True once commitments meet or exceed the budget. */
+  overBudget: boolean;
+};
+
+/**
+ * What a campaign's budget has left once accepted creators are paid.
+ *
+ * A creator's rate is the price they quoted when they applied, or — for a
+ * creator the brand reached out to, whose invitation carries no price — their
+ * package rate from their profile. Only accepted (approved) creators count,
+ * because an invitation still pending the creator's answer is not a commitment.
+ */
+export function campaignBudgetStatus(campaign: Campaign, applications: Application[], creators: CreatorProfile[]): CampaignBudgetStatus {
+  const approved = applications.filter((application) => application.campaignId === campaign.id && application.status === "approved");
+  const committed = approved.reduce((sum, application) => {
+    const creator = creators.find((candidate) => candidate.handle === application.creatorHandle);
+    const rate = application.quotedPrice || creator?.pricing?.packagePrice || 0;
+    return sum + Math.max(0, rate);
+  }, 0);
+  const budget = Math.max(0, campaign.budget || 0);
+  return {
+    budget,
+    committed,
+    remaining: Math.max(0, budget - committed),
+    count: approved.length,
+    overBudget: committed > budget
+  };
+}
+
+/** The rate a single creator would consume against a budget. */
+export function creatorRate(creator: CreatorProfile | undefined, quotedPrice = 0): number {
+  return Math.max(0, quotedPrice || creator?.pricing?.packagePrice || 0);
 }
 
 /** The campaign-persona paragraph shown under the composer and saved on launch. */
