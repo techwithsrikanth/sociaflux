@@ -120,7 +120,9 @@ export function projectCreator(creator: CreatorProfile, campaign: Campaign, quot
   const engagements = Math.round(reach * tier.engagementRate);
   const clicks = Math.round(reach * rates.clickRate);
   const conversions = Math.round(clicks * rates.conversionRate * 10) / 10;
-  const cost = quotedPrice ?? creatorAskingPrice(creator);
+  // A creator reached out to has no quoted price (0), so fall back to their
+  // asking rate — `??` would keep the 0 and make them look free in the plan.
+  const cost = quotedPrice || creatorAskingPrice(creator);
 
   return {
     handle: creator.handle,

@@ -34,6 +34,31 @@ function makeCampaign(overrides: Partial<Campaign> = {}): Campaign {
   return normaliseCampaign({ name: "Test", budget: 10_000, ...overrides });
 }
 
+describe("projectCreator cost", () => {
+  it("uses the quoted price when the creator quoted one", () => {
+    assert.equal(projectCreator(makeCreator("@a", 100_000, 90_000), makeCampaign(), 50_000).cost, 50_000);
+  });
+
+  it("falls back to the asking rate when the quote is 0 (a creator reached out to)", () => {
+    // The bug: `quotedPrice ?? asking` kept the 0 and made invited creators
+    // look free in the campaign plan. `|| asking` fixes it.
+    assert.equal(projectCreator(makeCreator("@a", 100_000, 90_000), makeCampaign(), 0).cost, 90_000);
+  });
+
+  it("falls back to the asking rate when no quote is given at all", () => {
+    assert.equal(projectCreator(makeCreator("@a", 100_000, 90_000), makeCampaign()).cost, 90_000);
+  });
+
+  it("sums committed spend across a mixed roster", () => {
+    const roster = [
+      { creator: makeCreator("@kiara", 500_000, 50_000), quotedPrice: 50_000 },
+      { creator: makeCreator("@mamitha", 7_000_000, 25_000), quotedPrice: 0 },
+      { creator: makeCreator("@deepika", 80_000_000, 90_000), quotedPrice: 0 }
+    ];
+    assert.equal(projectCampaign(makeCampaign(), roster).cost, 165_000);
+  });
+});
+
 describe("projectCreator", () => {
   it("reaches a share of followers, not all of them", () => {
     const projection = projectCreator(makeCreator("@a", 100_000), makeCampaign({ deliverables: ["1 reel"] }));
