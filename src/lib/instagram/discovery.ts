@@ -143,6 +143,45 @@ export async function discoverInstagramProfile(handleOrUrl: string): Promise<Dis
 }
 
 /**
+ * A live health check for diagnostics. Unlike `discoverInstagramProfile`, which
+ * swallows every failure so the caller can fall back to scraping, this reports
+ * exactly why a lookup failed — a dead or revoked token, a private target, a
+ * missing config — so a deployment can be checked from one URL. Returns no
+ * secret, only whether each variable is set and what Meta said.
+ */
+export async function probeBusinessDiscovery(handleOrUrl: string): Promise<{
+  configured: boolean;
+  tokenSet: boolean;
+  userIdSet: boolean;
+  ok: boolean;
+  followers?: number;
+  error?: string;
+}> {
+  const { token, userId } = discoveryConfig();
+  const base = { configured: isDiscoveryConfigured(), tokenSet: Boolean(token), userIdSet: Boolean(userId) };
+
+  if (!base.configured) return { ...base, ok: false, error: "SOCIAFLUX_INSTAGRAM_DISCOVERY_TOKEN and _USER_ID must both be set." };
+
+  const username = discoveryUsername(handleOrUrl);
+  if (!username) return { ...base, ok: false, error: `"${handleOrUrl}" is not a valid Instagram handle.` };
+
+  try {
+    const params = new URLSearchParams({ fields: discoveryFields(username), access_token: token });
+    const response = await fetch(`${GRAPH_HOST}/${GRAPH_VERSION}/${userId}?${params.toString()}`, { cache: "no-store" });
+    const body = await response.json().catch(() => null);
+    if (!response.ok) {
+      const message = (body as { error?: { message?: string } } | null)?.error?.message || `HTTP ${response.status}`;
+      return { ...base, ok: false, error: message };
+    }
+    const profile = parseDiscoveryResponse(body);
+    if (!profile) return { ...base, ok: false, error: "Account is private, personal, or not found." };
+    return { ...base, ok: true, followers: profile.followersCount };
+  } catch (error) {
+    return { ...base, ok: false, error: error instanceof Error ? error.message : "unknown error" };
+  }
+}
+
+/**
  * Shaped exactly like the scraper's output so the analysis provider needs no
  * knowledge of where the numbers came from. The counts go into `textSample` in
  * the `Label: value` form the provider already parses.

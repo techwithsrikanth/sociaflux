@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import * as cheerio from "cheerio";
 import { getDb, databaseUrl, isRemoteDatabase } from "@/lib/db/client";
+import { probeBusinessDiscovery } from "@/lib/instagram/discovery";
 
 export const dynamic = "force-dynamic";
 
@@ -72,5 +73,10 @@ export async function GET(request: Request) {
     instagram = { handle, error: error instanceof Error ? error.message : String(error) };
   }
 
-  return NextResponse.json({ build, config, database, instagram });
+  // Business Discovery is how a hosted server reads creator metrics, so its
+  // health is the real answer to "why is everyone showing Unknown". A live
+  // probe here catches a dead or revoked token, which scraping cannot.
+  const discovery = await probeBusinessDiscovery(handle);
+
+  return NextResponse.json({ build, config, database, discovery, instagram });
 }
