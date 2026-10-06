@@ -126,15 +126,13 @@ describe("brand reaching out to a creator (invitation lifecycle)", () => {
     assert.ok((await listApplications({ creatorHandle: "@newcreator" })).some((a) => a.status === "invited"));
   });
 
-  it("carries the creator's rate, so accepting means accepting at that price", async () => {
+  it("is priceless by default — rate is agreed over email after accepting", async () => {
     await saveCreator(creator("@ratecreator"));
+    // The route no longer seeds a price; invitations are an interest signal.
     const { application } = await inviteApplication({
-      id: "app_rate", campaignId: "cmp_vivo", campaignName: "x", creatorHandle: "@ratecreator", quotedPrice: 25000
+      id: "app_rate", campaignId: "cmp_vivo", campaignName: "x", creatorHandle: "@ratecreator"
     });
-    assert.equal(application.quotedPrice, 25000);
-    const accepted = await setApplicationStatus(application.id, "approved");
-    // The agreed price survives the accept, so the brand sees $25,000.
-    assert.equal(accepted?.quotedPrice, 25000);
+    assert.equal(application.quotedPrice, 0);
   });
 
   it("lets the creator accept, which moves it to approved for the brand", async () => {
