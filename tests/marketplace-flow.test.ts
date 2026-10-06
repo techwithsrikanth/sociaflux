@@ -6,6 +6,8 @@ import { after, before, describe, it } from "node:test";
 
 import { closeDb, getDb } from "../src/lib/db/client";
 import {
+  getBrand,
+  inviteApplication,
   listApplications,
   listCampaigns,
   saveApplication,
@@ -101,5 +103,36 @@ describe("brand and creator marketplace flow", () => {
     await saveApplication(application("app_2", "cmp_vivo", "@mamitha_baiju"));
     const mine = await listApplications({ creatorHandle: "@mamitha_baiju" });
     assert.equal(mine.length, 2);
+  });
+
+  it("persists and reloads a brand profile by slug", async () => {
+    // The brand profile must survive reloads rather than reverting to a demo.
+    await saveBrand(brand("Vivo India"), slug("Vivo India"));
+    const loaded = await getBrand(slug("Vivo India"));
+    assert.equal(loaded?.businessName, "Vivo India");
+  });
+});
+
+describe("brand reaching out to a creator", () => {
+  it("creates a shortlisted application the brand can then approve", async () => {
+    await saveCreator(creator("@newcreator"));
+    const { application: invited, created } = await inviteApplication({
+      id: "app_invite", campaignId: "cmp_vivo", campaignName: "Vivo India — Vivo V80", creatorHandle: "@newcreator"
+    });
+    assert.equal(created, true);
+    assert.equal(invited.status, "shortlisted");
+    // It shows up for the brand under that campaign.
+    assert.ok((await listApplications({ campaignId: "cmp_vivo" })).some((a) => a.creatorHandle === "@newcreator"));
+  });
+
+  it("never overwrites an application the creator already made", async () => {
+    // mamitha already applied (and was approved) on cmp_sam earlier.
+    await setApplicationStatus("app_1", "approved");
+    const { created, application: existing } = await inviteApplication({
+      id: "app_invite_2", campaignId: "cmp_sam", campaignName: "x", creatorHandle: "@mamitha_baiju"
+    });
+    assert.equal(created, false);
+    // The approval stands — reaching out did not downgrade it to shortlisted.
+    assert.equal(existing.status, "approved");
   });
 });

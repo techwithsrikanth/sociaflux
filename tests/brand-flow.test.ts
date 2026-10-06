@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { buildProductPersonaText, campaignsForBrand, defaultCampaignName, resolveCampaignProduct } from "../src/lib/brand-flow";
+import { brandProfileReady, buildProductPersonaText, campaignsForBrand, defaultCampaignName, emptyBusinessProfile, resolveCampaignProduct } from "../src/lib/brand-flow";
 import { normaliseCampaign } from "../src/lib/marketplace";
 import type { Campaign } from "../src/lib/marketplace";
 import type { BusinessProfile } from "../src/lib/types";
@@ -76,6 +76,27 @@ describe("defaultCampaignName", () => {
 
   it("handles a missing current name", () => {
     assert.equal(defaultCampaignName("Vivo India", "Vivo V80"), "Vivo India — Vivo V80");
+  });
+});
+
+describe("emptyBusinessProfile", () => {
+  it("stamps the brand's own name, never the demo", () => {
+    const p = emptyBusinessProfile("Vivo India");
+    assert.equal(p.businessName, "Vivo India");
+    assert.notEqual(p.businessName, "Aura Atelier");
+  });
+
+  it("is a complete, empty profile that is not yet ready", () => {
+    const p = emptyBusinessProfile("Vivo India");
+    assert.deepEqual(p.products, []);
+    assert.deepEqual(p.targetAudience, []);
+    assert.equal(p.summary, "");
+    // A name alone is not a set-up brand.
+    assert.equal(brandProfileReady(p), false);
+  });
+
+  it("is ready once it has a summary", () => {
+    assert.equal(brandProfileReady({ ...emptyBusinessProfile("Vivo India"), summary: "A real summary" }), true);
   });
 });
 

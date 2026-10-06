@@ -318,6 +318,42 @@ export async function saveApplication(application: Application): Promise<Applica
   return result.rows.length ? rowToApplication(result.rows[0]) : stored;
 }
 
+/**
+ * Brand-initiated outreach. Creates an application for a creator the brand
+ * found through discovery, but only if none exists for that (campaign, creator)
+ * pair — so reaching out never overwrites a real application the creator made,
+ * nor downgrades an approval. Returns the existing row untouched when there is
+ * one, so the caller can tell the brand they already have a thread.
+ */
+export async function inviteApplication(input: {
+  id: string;
+  campaignId: string;
+  campaignName: string;
+  creatorHandle: string;
+  brandNote?: string;
+}): Promise<{ application: Application; created: boolean }> {
+  const handle = normaliseHandle(input.creatorHandle);
+  const existing = await getDb().execute({
+    sql: "SELECT * FROM applications WHERE campaign_id = ? AND creator_handle = ?",
+    args: [input.campaignId, handle]
+  });
+  if (existing.rows.length) return { application: rowToApplication(existing.rows[0]), created: false };
+
+  const application: Application = {
+    id: input.id,
+    campaignId: input.campaignId,
+    campaignName: input.campaignName,
+    creatorHandle: handle,
+    pitch: "",
+    quotedPrice: 0,
+    openToBarter: false,
+    status: "shortlisted",
+    appliedAt: new Date().toISOString(),
+    brandNote: input.brandNote || "The brand reached out to you about this campaign."
+  };
+  return { application: await saveApplication(application), created: true };
+}
+
 export async function setApplicationStatus(id: string, status: ApplicationStatus, brandNote?: string): Promise<Application | null> {
   await getDb().execute({
     sql: `UPDATE applications

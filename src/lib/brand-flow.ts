@@ -64,6 +64,47 @@ export function defaultCampaignName(brandName: string, product: string, currentN
   return brand ? `${brand} — ${name}` : `${name} campaign`;
 }
 
+/**
+ * A blank brand profile stamped with the account's name, used when a brand
+ * signs in and has nothing saved yet. Critically this is NOT the Aura Atelier
+ * demo: a new brand must see its own name, not someone else's, everywhere the
+ * workspace reads businessName.
+ */
+export function emptyBusinessProfile(name: string): BusinessProfile {
+  return {
+    businessName: name,
+    website: "",
+    description: "",
+    industry: "",
+    category: "",
+    products: [],
+    services: [],
+    targetAudience: [],
+    brandTone: [],
+    pricePositioning: "",
+    country: "",
+    languages: [],
+    socialLinks: [],
+    visualStyle: [],
+    keywords: [],
+    primaryValueProposition: "",
+    uniqueSellingPoints: [],
+    brandPersonality: [],
+    estimatedCustomerPersona: [],
+    importantPages: [],
+    contactInformation: [],
+    frequentlyMentionedTerms: [],
+    summary: "",
+    embeddingText: "",
+    rawData: {}
+  };
+}
+
+/** True once a brand has actually set up its persona, not just its name. */
+export function brandProfileReady(profile: BusinessProfile): boolean {
+  return Boolean(profile.businessName && profile.summary);
+}
+
 /** The campaign-persona paragraph shown under the composer and saved on launch. */
 export function buildProductPersonaText(answers: string[], campaign: Campaign, profile: BusinessProfile): string {
   const product = resolveCampaignProduct(answers, campaign);
