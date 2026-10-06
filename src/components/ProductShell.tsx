@@ -186,6 +186,23 @@ export default function ProductShell({ brandStep = "onboarding", creatorStep = "
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Creators and brands act in separate sessions, so a brand's budget and
+  // applicants go stale when a creator accepts elsewhere. Refetch whenever the
+  // tab regains focus, and poll gently while it is open, so the numbers a brand
+  // is looking at stay current without a manual reload.
+  useEffect(() => {
+    const refresh = () => { if (typeof document === "undefined" || document.visibilityState === "visible") void marketplace.refresh(); };
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    const poll = window.setInterval(refresh, 20000);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+      window.clearInterval(poll);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Load the signed-in brand's saved profile from the database so edits
   // persist across reloads and devices, and a new brand sees its own name
   // rather than the Aura Atelier demo.
