@@ -11,6 +11,7 @@ import NicheSelector from "@/components/creator/NicheSelector";
 import ReelManager from "@/components/creator/ReelManager";
 import ReelGrid from "@/components/ReelGrid";
 import { APPLICATION_STATUS_LABEL, createId, matchesNicheFilter, normaliseCampaign, timeAgo } from "@/lib/marketplace";
+import { buildProductPersonaText, campaignsForBrand, defaultCampaignName, resolveCampaignProduct } from "@/lib/brand-flow";
 import type { Application, ApplicationStatus, Campaign } from "@/lib/marketplace";
 import { ALL_NICHES, normaliseNiche } from "@/lib/niches";
 import { LocationFields } from "@/components/RegionFields";
@@ -99,7 +100,7 @@ export default function ProductShell({ brandStep = "onboarding", creatorStep = "
   const [productAnswers, setProductAnswers] = useStoredState<string[]>("sf.productAnswers", Array(productQuestions.length).fill(""));
   const onboardingProductPersona = buildOnboardingProductPersona(brandProductAnswers, businessProfile);
   const selectedProductPersona = productPersonas.find((product) => product.name === promotionTarget);
-  const productPersona = buildProductPersona(campaign, productAnswers, businessProfile);
+  const productPersona = buildProductPersonaText(productAnswers, campaign, businessProfile);
 
   const activeBrandName = brandName || businessProfile.businessName;
   const launchedBoard: Campaign[] = launchedCampaigns.map((item) => normaliseCampaign({ ...item, brandName: item.brandName || activeBrandName }));
@@ -136,7 +137,8 @@ export default function ProductShell({ brandStep = "onboarding", creatorStep = "
   const sortedMatches = matches.map((match) => ({ ...match, score: matchCreatorToCampaign(creators.find((creator) => creator.handle === match.creatorHandle) || creatorProfile, discoveryCampaign).score })).sort((a, b) => b.score - a.score);
   const brandProfileReady = Boolean(businessProfile.businessName && businessProfile.summary);
   const filteredMatches = discoveryNiche ? sortedMatches.filter((match) => { const creator = creators.find((item) => item.handle === match.creatorHandle); return creator ? matchesNicheFilter(creator, [discoveryNiche]) : false; }) : sortedMatches;
-  const brandCampaigns = launchedBoard.length && applications.some((item) => item.campaignId === fallbackCampaign.id) ? [...launchedBoard, fallbackCampaign] : visibleCampaigns;
+  const ownedCampaigns = campaignsForBrand(launchedBoard, activeBrandName);
+  const brandCampaigns = ownedCampaigns.length ? ownedCampaigns : [fallbackCampaign];
   const activeApplicantCampaignId = brandCampaigns.some((item) => item.id === applicantCampaignId) ? applicantCampaignId : brandCampaigns[0]?.id || "";
   const newApplicationCount = applications.filter((item) => item.status === "applied" && brandCampaigns.some((entry) => entry.id === item.campaignId)).length;
   const myApplications = applications.filter((item) => item.creatorHandle === creatorProfile.handle);
@@ -194,7 +196,9 @@ export default function ProductShell({ brandStep = "onboarding", creatorStep = "
   function updatePrice(key: keyof CreatorProfile["pricing"], value: number) { setCreatorProfile((current) => ({ ...current, pricing: { ...current.pricing, [key]: value } })); }
   function launchCampaign() {
     const chosenProduct = productPersonas.find((product) => product.name === campaign.product);
-    const nextCampaign = normaliseCampaign({ ...campaign, id: createId("cmp"), persona: chosenProduct?.persona || productPersona, brandName: activeBrandName, postedAt: new Date().toISOString() });
+    const product = resolveCampaignProduct(productAnswers, campaign, chosenProduct?.name);
+    const name = defaultCampaignName(activeBrandName, product, campaign.name);
+    const nextCampaign = normaliseCampaign({ ...campaign, name, product, id: createId("cmp"), persona: chosenProduct?.persona || productPersona, brandName: activeBrandName, postedAt: new Date().toISOString() });
     void marketplace.postCampaign(nextCampaign);
     setCampaign(nextCampaign);
     setApplicantCampaignId(nextCampaign.id);
@@ -363,7 +367,22 @@ function magicBrandAnswer(index: number, profile: BusinessProfile) { return [pro
 function magicCreatorAnswer(index: number, profile: CreatorProfile) { return [profile.summary, `Strong brand fit: ${profile.previousCollaborations.productCategories.join(", ") || profile.primaryNiche}. Personality: ${profile.brandPersonality.join(", ").toLowerCase()}.`, `Audience is estimated as ${profile.estimatedAudience.ageGroups.join(", ")} with interests in ${profile.estimatedAudience.interests.join(", ").toLowerCase()} across ${profile.estimatedAudience.geography.join(", ")}.`, `Best formats are ${profile.contentStyles.join(", ").toLowerCase()}; dominant format: ${profile.postingBehaviour.dominantFormat}.`, `Preferred collaborations include packages around ${profile.pricing.packagePrice || 0}, especially formats that match ${profile.contentPillars.slice(0, 3).join(", ").toLowerCase()}.`, `Performance comes from ${profile.contentQuality.brandingConsistency.toLowerCase()} branding, ${profile.postingBehaviour.captionStyle.toLowerCase()} captions, and ${profile.contentStyles.slice(0, 3).join(", ").toLowerCase()} formats.`, `Avoid topics with brand-safety concern: ${profile.brandSafety.sensitiveTopics}. Also avoid brands that do not fit ${profile.primaryNiche}.`][index] || profile.summary; }
 function magicOnboardingProductAnswer(index: number, profile: BusinessProfile) { return [profile.products[0] || profile.businessName, profile.category || profile.industry, profile.primaryValueProposition || profile.description, profile.targetAudience.join(", ") || profile.estimatedCustomerPersona.join("; "), profile.country || profile.estimatedCustomerPersona.join(", "), profile.brandTone.join(", ") || profile.brandPersonality.join(", "), profile.brandPersonality.slice(0, 3).join(", ") || "Trustworthy, Useful, Distinctive"][index] || profile.summary; }
 function buildOnboardingProductPersona(answers: string[], profile: BusinessProfile) { const product = answers[0] || profile.products[0] || profile.businessName; const category = answers[1] || profile.category; const job = answers[2] || profile.primaryValueProposition; const audience = answers[3] || profile.targetAudience.join(", "); const markets = answers[4] || profile.country; const voice = answers[5] || profile.brandTone.join(", "); const words = answers[6] || profile.brandPersonality.slice(0, 3).join(", "); return `${product} is a ${category} product for ${audience} in ${markets}. It helps customers with ${job}. The brand voice should feel ${voice.toLowerCase()}, and customers should associate it with ${words}.`; }
-function magicProductAnswer(index: number, campaign: Campaign, profile: BusinessProfile) { return [campaign.product, campaign.audience || profile.targetAudience.join(", "), `${campaign.product} helps ${campaign.audience.toLowerCase()} achieve ${campaign.goal.toLowerCase()}.`, profile.uniqueSellingPoints.join("; ") || profile.primaryValueProposition, `Use ${campaign.creatorType.toLowerCase()} with ${profile.brandTone.join(", ").toLowerCase()} storytelling.`, `Avoid unverified claims, fake scarcity, misleading discounts, medical/financial promises, and statements outside the product brief.`][index] || campaign.goal; }
-function buildProductPersona(campaign: Campaign, answers: string[], profile: BusinessProfile) { const audience = answers[1] || campaign.audience || profile.targetAudience.join(", "); const problem = answers[2] || campaign.goal; const proof = answers[3] || profile.uniqueSellingPoints.join("; ") || profile.primaryValueProposition; const format = answers[4] || campaign.creatorType; return `${campaign.product} is positioned for ${audience}. It should be presented as solving: ${problem}. Creators should emphasize ${proof}. Best creator format: ${format}.`; }
+function magicProductAnswer(index: number, campaign: Campaign, profile: BusinessProfile) {
+  // Draft from the analysed website rather than the "Hero product" placeholder,
+  // so Magic write reflects the real brand the moment it is clicked.
+  const product = campaign.product && campaign.product !== "Hero product" ? campaign.product : (profile.products?.[0] || profile.businessName || "the product");
+  const audience = campaign.audience || profile.targetAudience.join(", ") || profile.estimatedCustomerPersona.join(", ");
+  const goal = campaign.goal || profile.primaryValueProposition;
+  const format = campaign.creatorType || "niche creators";
+  return [
+    product,
+    audience,
+    `${product} helps ${audience.toLowerCase()} achieve ${goal.toLowerCase()}.`,
+    profile.uniqueSellingPoints.join("; ") || profile.primaryValueProposition,
+    `Use ${format.toLowerCase()} with ${(profile.brandTone.join(", ") || "clear, authentic").toLowerCase()} storytelling.`,
+    "Avoid unverified claims, fake scarcity, misleading discounts, medical/financial promises, and statements outside the product brief."
+  ][index] || goal;
+}
+
 function compact(value: number) { return new Intl.NumberFormat("en", { notation: "compact" }).format(value); }
 

@@ -5,7 +5,7 @@ import { useState } from "react";
 import { RegionPicker } from "@/components/RegionFields";
 import { BriefAssetEditor } from "@/components/brand/BriefAssets";
 import { Chip, Input, Panel, PrimaryButton, Select, TextArea } from "@/components/ui";
-import { FOLLOWER_TIERS, NICHE_TAXONOMY } from "@/lib/niches";
+import { FOLLOWER_TIERS, NICHE_TAXONOMY, categoryOf } from "@/lib/niches";
 import { OBJECTIVE_LABEL } from "@/lib/campaign-metrics";
 import { BARTER_POLICY_LABEL, OBJECTIVES, compactNumber } from "@/lib/marketplace";
 import type { BarterPolicy, BriefAsset, Campaign, CampaignObjective, CampaignTargets } from "@/lib/marketplace";
@@ -45,7 +45,10 @@ export default function CampaignComposer({ campaign, onLaunch, personaText, ques
   setCampaign: (next: Campaign) => void;
   targetSelector: React.ReactNode;
 }) {
-  const [nicheCategory, setNicheCategory] = useState(NICHE_TAXONOMY[0].category);
+  // Derive the opening category from a niche the brand already picked, so
+  // returning to this tab does not snap the dropdown back to the first category
+  // and lose where they were.
+  const [nicheCategory, setNicheCategory] = useState(() => categoryOf((campaign.targetNiches || [])[0]) || NICHE_TAXONOMY[0].category);
   const group = NICHE_TAXONOMY.find((item) => item.category === nicheCategory) || NICHE_TAXONOMY[0];
   const targetNiches = campaign.targetNiches || [];
   const deliverables = campaign.deliverables || [];

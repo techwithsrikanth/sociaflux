@@ -318,12 +318,13 @@ Country codes are ISO 3166-1 alpha-2. Inputs are canonicalised on the way in, so
 npm test
 ```
 
-Runs `tests/*.test.ts` on the Node test runner via `tsx` — 206 cases covering tag
+Runs `tests/*.test.ts` on the Node test runner via `tsx` — 224 cases covering tag
 intersection, barter policy, region specificity, the hard filters, score
 weighting and ranking order, the reach/conversion projection model, and the
 business classifier including the Samsung and Apple regressions, and the
 database repositories, the Instagram Business Discovery parser, and password hashing session
-signing, and the single-use password-reset tokens. The
+signing, and the single-use password-reset tokens, the brand/creator marketplace flow and
+per-brand campaign scoping. The
 database tests run against a throwaway local SQLite file, never against Turso.
 
 ## Deployment
