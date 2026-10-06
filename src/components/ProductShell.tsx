@@ -274,7 +274,13 @@ export default function ProductShell({ brandStep = "onboarding", creatorStep = "
     } finally { setLoading(null); }
   }
 
-  function updatePrice(key: keyof CreatorProfile["pricing"], value: number) { setCreatorProfile((current) => ({ ...current, pricing: { ...current.pricing, [key]: value } })); }
+  function updatePrice(key: keyof CreatorProfile["pricing"], value: number) {
+    // Persist like every other edit; previously this only touched local state,
+    // so pricing was not saved until some other field (barter) triggered a save.
+    const next = { ...creatorProfile, pricing: { ...creatorProfile.pricing, [key]: value } };
+    setCreatorProfile(next);
+    marketplace.saveCreator(next);
+  }
   function launchCampaign() {
     const chosenProduct = productPersonas.find((product) => product.name === campaign.product);
     const product = resolveCampaignProduct(productAnswers, campaign, chosenProduct?.name);
